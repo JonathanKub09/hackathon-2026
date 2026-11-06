@@ -61,7 +61,7 @@ export function Rise({ children, i = 0, className = '' }: { children: ReactNode;
 }
 
 const inputBase =
-  'w-full rounded-lg bg-surface px-4 text-base text-ink placeholder:text-muted/70 outline-none transition-[box-shadow,background-color] focus:bg-white focus:ring-2 focus:ring-accent'
+  'w-full rounded-lg bg-surface px-4 text-base text-ink ring-1 ring-control placeholder:text-muted/70 outline-none transition-[box-shadow] focus:ring-2 focus:ring-accent'
 
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string }
 

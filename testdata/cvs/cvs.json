@@ -1,0 +1,235 @@
+[
+  {
+    "datei": "mock-cv-technik.pdf",
+    "erwartetes_profil": {
+      "study_program": "Maschinenbau",
+      "degree": "B.Eng.",
+      "university": "Hochschule Musterstadt",
+      "expected_graduation": "03/2027"
+    },
+    "erwartetes_kuerzel": "MAEL5101",
+    "identitaet": {
+      "vorname": "Mara",
+      "nachname": "Beispiel",
+      "email": "mara.beispiel@example.com",
+      "telefon": "030 23125 101",
+      "ort": "Musterstadt"
+    },
+    "erfahrung": [
+      {
+        "von": "09/2024",
+        "bis": "heute",
+        "titel": "Werkstudentin Konstruktion",
+        "organisation": "Beispielwerk Anlagenbau GmbH",
+        "details": [
+          "Konstruktion von Baugruppen für Förderanlagen in CAD",
+          "Erstellung von Stücklisten und Fertigungszeichnungen für die Serienmontage sowie Abstimmung mit der Qualitätssicherung an zwei Standorten"
+        ]
+      },
+      {
+        "von": "03/2024",
+        "bis": "08/2024",
+        "titel": "Praktikantin Kunststofftechnik",
+        "organisation": "Formfein Spritzguss GmbH",
+        "details": [
+          "Auswertung von Prüfreihen zu Spritzgussteilen"
+        ]
+      },
+      {
+        "von": "10/2022",
+        "bis": "02/2024",
+        "titel": "Tutorin Technische Mechanik",
+        "organisation": "Hochschule Musterstadt",
+        "details": [
+          "Leitung einer wöchentlichen Übungsgruppe mit 20 Studierenden"
+        ]
+      },
+      {
+        "von": "04/2022",
+        "bis": "heute",
+        "titel": "Teammitglied Rennwagenbau",
+        "organisation": "Racing Team Musterstadt e.V.",
+        "details": [
+          "Auslegung und Simulation der Radträger für den Rennwagen"
+        ]
+      }
+    ],
+    "ausbildung": [
+      {
+        "von": "10/2021",
+        "bis": "03/2027",
+        "titel": "B.Eng. Maschinenbau",
+        "organisation": "Hochschule Musterstadt"
+      },
+      {
+        "von": "09/2013",
+        "bis": "06/2021",
+        "titel": "Abitur",
+        "organisation": "Gymnasium Musterstadt"
+      }
+    ],
+    "kenntnisse": [
+      "CAD",
+      "FEM-Simulation",
+      "Technische Zeichnung",
+      "Python",
+      "Projektmanagement"
+    ],
+    "sprachen": [
+      "Deutsch (Muttersprache)",
+      "Englisch (C1)",
+      "Französisch (B1)"
+    ]
+  },
+  {
+    "datei": "mock-cv-kreativ.pdf",
+    "erwartetes_profil": {
+      "study_program": "Kommunikationsdesign",
+      "degree": "B.A.",
+      "university": "Kunsthochschule Musterstadt",
+      "expected_graduation": "09/2023"
+    },
+    "erwartetes_kuerzel": "NOBE5102",
+    "identitaet": {
+      "vorname": "Noah",
+      "nachname": "Probe",
+      "email": "noah.probe@example.com",
+      "telefon": "030 23125 102",
+      "ort": "Musterstadt"
+    },
+    "erfahrung": [
+      {
+        "von": "02/2025",
+        "bis": "heute",
+        "titel": "Junior Grafikdesigner",
+        "organisation": "Atelier Beispiel",
+        "details": [
+          "Gestaltung von Kampagnen und Plakaten für Kulturveranstaltungen"
+        ]
+      },
+      {
+        "von": "06/2023",
+        "bis": "12/2024",
+        "titel": "Freier Illustrator",
+        "organisation": "Selbstständig",
+        "details": [
+          "Illustrationen für Kinderbücher und Magazine"
+        ]
+      },
+      {
+        "von": "10/2022",
+        "bis": "05/2023",
+        "titel": "Praktikant Ausstellungsgestaltung",
+        "organisation": "Kunsthalle Musterstadt",
+        "details": [
+          "Mitarbeit beim Aufbau von drei Ausstellungen"
+        ]
+      }
+    ],
+    "ausbildung": [
+      {
+        "von": "10/2019",
+        "bis": "09/2023",
+        "titel": "B.A. Kommunikationsdesign",
+        "organisation": "Kunsthochschule Musterstadt"
+      },
+      {
+        "von": "08/2011",
+        "bis": "06/2019",
+        "titel": "Abitur",
+        "organisation": "Gesamtschule Musterstadt"
+      }
+    ],
+    "kenntnisse": [
+      "Illustration",
+      "Typografie",
+      "Layout",
+      "Figma",
+      "Fotografie"
+    ],
+    "sprachen": [
+      "Deutsch (Muttersprache)",
+      "Englisch (C1)"
+    ]
+  },
+  {
+    "datei": "mock-cv-generisch.pdf",
+    "erwartetes_profil": {
+      "study_program": "",
+      "degree": "",
+      "university": "",
+      "expected_graduation": ""
+    },
+    "erwartetes_kuerzel": "SEER5103",
+    "identitaet": {
+      "vorname": "Selin",
+      "nachname": "Muster",
+      "email": "selin.muster@example.com",
+      "telefon": "030 23125 103",
+      "ort": "Musterstadt"
+    },
+    "erfahrung": [
+      {
+        "von": "01/2023",
+        "bis": "heute",
+        "titel": "Schichtleiterin",
+        "organisation": "Bäckerei Beispiel GmbH",
+        "details": [
+          "Personaleinsatzplanung für ein Team von acht Mitarbeitenden"
+        ]
+      },
+      {
+        "von": "03/2020",
+        "bis": "heute",
+        "titel": "Ehrenamtliche Trainerin",
+        "organisation": "TSV Musterstadt e.V.",
+        "details": [
+          "Training einer Jugendmannschaft und Organisation von Turnieren"
+        ]
+      },
+      {
+        "von": "08/2021",
+        "bis": "12/2022",
+        "titel": "Bürokraft",
+        "organisation": "Ingenieurbüro Musterplan",
+        "details": [
+          "Terminverwaltung, Rechnungsablage und Kundenkontakt"
+        ]
+      },
+      {
+        "von": "09/2018",
+        "bis": "07/2021",
+        "titel": "Auszubildende im Einzelhandel",
+        "organisation": "Kaufhaus Musterstadt",
+        "details": [
+          "Kundenberatung, Kassenabrechnung und Warenpräsentation"
+        ]
+      }
+    ],
+    "ausbildung": [
+      {
+        "von": "09/2018",
+        "bis": "07/2021",
+        "titel": "Kauffrau im Einzelhandel",
+        "organisation": "Berufsschule Musterstadt"
+      },
+      {
+        "von": "08/2012",
+        "bis": "06/2018",
+        "titel": "Mittlerer Schulabschluss",
+        "organisation": "Realschule Musterstadt"
+      }
+    ],
+    "kenntnisse": [
+      "Kundenberatung",
+      "Kassensysteme",
+      "Dienstplanung",
+      "Microsoft Office"
+    ],
+    "sprachen": [
+      "Deutsch (Muttersprache)",
+      "Türkisch (Muttersprache)",
+      "Englisch (B2)"
+    ]
+  }
+]

@@ -1,5 +1,7 @@
 # Rolle 2: Frontend Bewerber (`/apply`)
 
+> **Stand:** Das Backend steht. Abläufe und Aufrufe stehen in [docs/schnittstelle.md](../schnittstelle.md), die Datei gilt vor dieser Rolle.
+
 Du baust die Seite, auf der sich Studierende bewerben: Formular ausfüllen, Lebenslauf hochladen, absenden.
 Stack und Gesamtplan stehen in [STACK.md](../../STACK.md).
 
