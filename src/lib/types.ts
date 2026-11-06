@@ -102,6 +102,8 @@ export type ApplicantStatus = {
 
 export type StaffMember = { role: StaffRole; display_name: string }
 
+export type OAuthProvider = { id: 'google' | 'azure' | 'github' | 'linkedin_oidc'; label: string }
+
 export type ApplicationDetails = {
   application: Tables['applications']['Row']
   experiences: Tables['experiences']['Row'][]

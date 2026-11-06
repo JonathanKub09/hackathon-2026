@@ -97,11 +97,24 @@ Das Backend bildet es aus den ersten 2 Buchstaben des Vornamens, den letzten 2 B
 
 ## Konten für Screener und Admins
 
-Auf `/recruiter/login` gibt es „Neu hier? Konto erstellen“. Für die Registrierung braucht man einen Einladungscode, der Code entscheidet über die Rolle. Es gibt je einen für Screener und Admins, das Konto ist sofort aktiv.
+Auf `/recruiter/login` gibt es zwei Wege, beide brauchen einen Einladungscode. Der Code entscheidet über die Rolle, es gibt je einen für Screener und Admins.
+
+- **E-Mail und Passwort:** „Neu hier? Konto erstellen“. Das Konto ist sofort aktiv.
+- **OAuth, zum Beispiel Google:** Der Knopf erscheint automatisch, sobald der Anbieter im Supabase-Projekt eingeschaltet ist. Beim ersten Login fragt die App einmalig nach dem Code. Ohne Code bleibt das Konto ohne Zugriff.
 
 Die Codes stehen nicht im Repo, weil es öffentlich ist. Die Datenbank kennt nur ihre Hashes in `private.invite_codes`, einen neuen Code legt man dort als SHA-256-Hash an und löscht den alten.
 
 Es braucht mindestens 4 Screener, sonst bekommt keine Bewerbung ihre 4 Bewertungen. Vorhandene Bewerbungen werden beim Anlegen automatisch zugewiesen.
+
+### OAuth einschalten
+
+1. Beim Anbieter eine OAuth-App anlegen. Als Redirect-URL gilt `https://syxoiaqfajvzupesoqcg.supabase.co/auth/v1/callback`.
+2. Im Supabase-Dashboard unter Authentication > Sign In / Providers den Anbieter einschalten und Client-ID und Secret eintragen.
+3. Unter Authentication > URL Configuration die Adressen der App bei den Redirect URLs eintragen, also `http://localhost:5173/**` und später die Adresse des Deployments.
+
+## Demo-Daten
+
+[supabase/seed/demo_data.sql](../supabase/seed/demo_data.sql) legt erfundene Bewerbungen in allen Status und 4 Demo-Screener ohne Passwort an. Demo-Screener bekommen keine neuen Zuweisungen, offene Plätze gehen also an echte Screener. Das Skript lässt sich im SQL Editor beliebig oft ausführen. Vor dem echten Betrieb entfernt ihr die Daten mit dem Abschnitt „Alte Demo-Daten entfernen“ aus dem Skript.
 
 ## Backend ändern
 

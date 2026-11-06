@@ -361,18 +361,21 @@ export type Database = {
         Row: {
           created_at: string
           display_name: string
+          is_demo: boolean
           role: Database["public"]["Enums"]["staff_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           display_name: string
+          is_demo?: boolean
           role?: Database["public"]["Enums"]["staff_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           display_name?: string
+          is_demo?: boolean
           role?: Database["public"]["Enums"]["staff_role"]
           user_id?: string
         }

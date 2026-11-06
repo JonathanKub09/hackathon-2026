@@ -1,13 +1,14 @@
 // Alle Aufrufe ans Backend. Das Frontend nutzt nur diese Funktionen.
 // Ablauf und Regeln stehen in docs/schnittstelle.md.
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { CV_BUCKET, supabase } from './supabase'
+import { CV_BUCKET, SUPABASE_KEY, SUPABASE_URL, supabase } from './supabase'
 import type {
   ApplicantStatus,
   ApplicationDetails,
   ApplicationStatus,
   CvCheckResult,
   NewApplication,
+  OAuthProvider,
   Scores,
   ScreeningProgress,
   StaffMember,
@@ -87,6 +88,36 @@ export async function registerStaff(input: {
 }) {
   await callFunction('register', input)
   await signIn(input.email, input.password)
+}
+
+// Gibt einem angemeldeten Konto den Team-Zugang, zum Beispiel nach dem ersten Google-Login
+export async function claimInvite(code: string, displayName: string) {
+  await callFunction('register/claim', { code, display_name: displayName })
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google',
+  azure: 'Microsoft',
+  github: 'GitHub',
+  linkedin_oidc: 'LinkedIn',
+}
+
+// Nur Anbieter, die im Supabase-Projekt wirklich eingeschaltet sind
+export async function getOAuthProviders(): Promise<OAuthProvider[]> {
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_KEY } })
+  if (!response.ok) return []
+  const { external } = (await response.json()) as { external: Record<string, boolean> }
+  return Object.entries(PROVIDER_LABELS)
+    .filter(([id]) => external[id])
+    .map(([id, label]) => ({ id: id as OAuthProvider['id'], label }))
+}
+
+export async function signInWithProvider(provider: OAuthProvider['id']) {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: `${window.location.origin}/recruiter/login` },
+  })
+  if (error) throw new ApiError(error.message)
 }
 
 export async function signOut() {
