@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+/* Gemeinsame Design-Tokens. Nutzbar als bg-ground, text-muted, border-line usw. */
+@theme {
+  --font-sans: "Hanken Grotesk", system-ui, sans-serif;
+  --color-ground: #f6f7f7;
+  --color-surface: #ffffff;
+  --color-raised: #eef0f0;
+  --color-line: #e5e7e7;
+  --color-rule: #eff1f1;
+  --color-control: #d1d5d5;
+  --color-ink: #121616;
+  --color-muted: #5a6262;
+  --color-primary: #1a1f1f;
+  --color-accent: #0e6c78;
+  --color-accent-soft: #e2f0f1;
+}
+
+body {
+  @apply bg-ground text-ink antialiased;
+}

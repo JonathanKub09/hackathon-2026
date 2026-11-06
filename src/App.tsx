@@ -8,7 +8,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/apply" replace />} />
       <Route path="/apply" element={<ApplyPage />} />
-      <Route path="/recruiter" element={<RecruiterPage />} />
+      <Route path="/recruiter/*" element={<RecruiterPage />} />
     </Routes>
   )
 }
