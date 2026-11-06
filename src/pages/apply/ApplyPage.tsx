@@ -18,11 +18,15 @@ function readStep(): Step {
   return STEPS.includes(s) && s !== 'profil' ? s : 'start'
 }
 
+/** Der Lebenslauf liegt nur im Speicher. Nach einem Neuladen muss er neu ausgewählt werden. */
+const NEEDS_CV: Step[] = ['kontakt', 'pruefen', 'motivation', 'termin', 'absenden']
+
 export default function ApplyPage() {
-  const [step, setStep] = useState<Step>(readStep)
+  const [current, setStep] = useState<Step>(readStep)
   const [draft, setDraft] = useState<Draft>(newDraft)
   const [token, setToken] = useState<string | null>(readToken)
   const [questions, setQuestions] = useState<Question[]>([])
+  const step = NEEDS_CV.includes(current) && !draft.cvFile ? 'lebenslauf' : current
 
   useEffect(() => {
     getQuestions().then(setQuestions).catch(console.error)

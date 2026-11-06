@@ -3,6 +3,8 @@ import type { ApplicationOverview, RatingCriterion, ScreeningProgress, StaffMemb
 
 export type RecruitingCtx = {
   loading: boolean
+  /** Es gibt eine Anmeldung, sie kann aber noch ohne Team-Zugang sein. */
+  signedIn: boolean
   me: StaffMember | null
   applications: ApplicationOverview[]
   criteria: RatingCriterion[]

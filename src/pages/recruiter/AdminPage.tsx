@@ -11,7 +11,7 @@ const MOVABLE = STATUS_COLUMNS.filter((s) => s.id !== 'not_rated')
 
 // Nur für Admins: zeigt Klarnamen. Die Datenbank liefert anderen Rollen hier nichts.
 export default function AdminPage() {
-  const { me, criteria, refresh } = useRecruiting()
+  const { me, applications, criteria, refresh } = useRecruiting()
   const [rows, setRows] = useState<AdminOverview[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +20,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     load().catch((e) => setError(e instanceof Error ? e.message : 'Die Auswertung konnte nicht geladen werden.'))
-  }, [load])
+  }, [load, applications])
 
   const move = async (id: string, status: ApplicationStatus, interviewAt?: string) => {
     setError(null)

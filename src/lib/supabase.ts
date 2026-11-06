@@ -1,13 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Beide Werte sind öffentlich und landen ohnehin im Browser, die Rechte liegen in der Datenbank.
+// Die Standardwerte sorgen dafür, dass die App auch ohne oder mit leerer .env.local funktioniert.
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://syxoiaqfajvzupesoqcg.supabase.co'
+export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_VG1_lwIdMk7P_5t7qjofoQ_h62Tj-es'
 
-if (!url || !anonKey) {
-  console.warn('VITE_SUPABASE_URL oder VITE_SUPABASE_ANON_KEY fehlt. Siehe .env.example')
-}
-
-export const supabase = createClient<Database>(url ?? 'http://localhost', anonKey ?? 'missing-key')
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY)
 
 export const CV_BUCKET = 'cvs'
