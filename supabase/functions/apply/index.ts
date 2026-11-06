@@ -55,8 +55,7 @@ async function extractText(bytes: Uint8Array): Promise<string> {
       lines.push(rows.get(y)!.sort((a, b) => a.x - b.x).map((part) => part.text).join(''))
     }
   }
-  return lines.join('
-')
+  return lines.join('\n')
 }
 
 function identityFrom(source: Record<string, unknown>): Identity {
