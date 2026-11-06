@@ -23,8 +23,8 @@ export class ApiError extends Error {
   }
 }
 
-async function callApply<T>(path: 'check' | 'submit' | 'status', body: FormData): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(`apply/${path}`, { body })
+async function callFunction<T>(name: string, body: FormData | Record<string, string>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body })
   if (error) {
     if (error instanceof FunctionsHttpError) {
       const details = await error.context.json().catch(() => null)
@@ -33,6 +33,10 @@ async function callApply<T>(path: 'check' | 'submit' | 'status', body: FormData)
     throw new ApiError(error.message)
   }
   return data as T
+}
+
+function callApply<T>(path: 'check' | 'submit' | 'status', body: FormData) {
+  return callFunction<T>(`apply/${path}`, body)
 }
 
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }): T {
@@ -72,6 +76,17 @@ export async function getQuestions() {
 export async function signIn(email: string, password: string) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw new ApiError(error.message)
+}
+
+// Legt mit dem Einladungscode ein Konto an und meldet direkt an
+export async function registerStaff(input: {
+  email: string
+  password: string
+  display_name: string
+  code: string
+}) {
+  await callFunction('register', input)
+  await signIn(input.email, input.password)
 }
 
 export async function signOut() {
