@@ -7,10 +7,16 @@
 ```bash
 git clone https://github.com/JonathanKub09/hackathon-2026.git
 cd hackathon-2026
-cp .env.example .env
+npm install
+cp .env.example .env.local   # Supabase-URL und Anon-Key eintragen
+npm run dev
 ```
 
-Die Befehle zum Installieren und Starten kommen hierher, sobald der Tech-Stack feststeht.
+- Bewerbungsformular: http://localhost:5173/apply
+- Recruiter-Ansicht: http://localhost:5173/recruiter
+- Datenbank-Schema: [supabase/schema.sql](supabase/schema.sql) im Supabase SQL Editor ausführen
+
+Stack und Plan: [STACK.md](STACK.md). Rollen: [docs/rollen/](docs/rollen/).
 
 ## Zusammenarbeiten
 
