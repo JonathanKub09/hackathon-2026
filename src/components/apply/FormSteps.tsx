@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { ApiError, checkCv } from '../../lib/api.ts'
+import type { Question } from '../../lib/types.ts'
 import type { Draft, Experience } from './model.ts'
-import { MOTIVATION_FRAGE, fachFrage, isEmail, sampleContact, sampleExtraction, sampleMotivation } from './model.ts'
-import { Area, Button, Field, FormShell, Redact, Select } from './ui.tsx'
+import { fromCheck, isEmail, isPhone } from './model.ts'
+import { Area, Button, Field, FormShell, Select } from './ui.tsx'
 
 type StepProps = {
   draft: Draft
@@ -10,11 +12,80 @@ type StepProps = {
   onNext: () => void
 }
 
-function SampleLink({ onClick }: { onClick: () => void }) {
+/* ---------- Lebenslauf hochladen und auslesen ---------- */
+
+export function Lebenslauf({ draft, update, onBack, onNext }: StepProps) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [drag, setDrag] = useState(false)
+  const [reading, setReading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const takeFile = (f?: File | null) => {
+    if (!f) return
+    setError(null)
+    update({ cvFile: f })
+  }
+
+  const read = async () => {
+    if (!draft.cvFile) return
+    setReading(true)
+    setError(null)
+    try {
+      update(fromCheck(await checkCv(draft.cvFile)))
+      onNext()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Der Lebenslauf konnte nicht gelesen werden.')
+    } finally {
+      setReading(false)
+    }
+  }
+
   return (
-    <button type="button" onClick={onClick} className="text-base font-medium text-accent underline underline-offset-4 hover:text-accent-dark">
-      Beispieldaten einsetzen
-    </button>
+    <FormShell
+      step="lebenslauf"
+      title="Fang mit deinem Lebenslauf an."
+      intro="Wir füllen damit die nächsten Schritte für dich aus, du musst nur noch die Lücken ergänzen. Recruiter sehen deinen Lebenslauf nie, sondern nur die Angaben, die du gleich selbst prüfst."
+      onBack={onBack}
+      onNext={read}
+      nextDisabled={!draft.cvFile || reading}
+      nextLabel={reading ? 'Wird gelesen …' : 'Lebenslauf auslesen'}
+    >
+      <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDrag(true)
+        }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDrag(false)
+          takeFile(e.dataTransfer.files[0])
+        }}
+        className={`flex flex-col items-start gap-4 p-6 transition-colors ${drag ? 'bg-accent text-white' : 'bg-surface'}`}
+      >
+        {draft.cvFile ? (
+          <>
+            <p className="text-lg">
+              <span className="font-semibold">{draft.cvFile.name}</span> ist ausgewählt.
+            </p>
+            <Button variant="secondary" onClick={() => update({ cvFile: null })}>
+              Andere Datei wählen
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-lg">PDF hierher ziehen oder auswählen, höchstens 5 MB.</p>
+            <Button onClick={() => fileRef.current?.click()}>Datei auswählen</Button>
+          </>
+        )}
+        <input ref={fileRef} type="file" accept="application/pdf" className="sr-only" onChange={(e) => takeFile(e.target.files?.[0])} />
+      </div>
+      {error && (
+        <p role="alert" className="mt-4 text-base font-medium text-[#831c1e]">
+          {error}
+        </p>
+      )}
+    </FormShell>
   )
 }
 
@@ -22,31 +93,30 @@ function SampleLink({ onClick }: { onClick: () => void }) {
 
 export function Kontakt({ draft, update, onBack, onNext }: StepProps) {
   const set = (k: keyof Draft) => (e: { target: { value: string } }) => update({ [k]: e.target.value })
-  const ok = draft.vorname.trim() && draft.nachname.trim() && isEmail(draft.email)
+  const ok = draft.vorname.trim() && draft.nachname.trim() && isEmail(draft.email) && isPhone(draft.telefon)
   return (
     <FormShell
       step="kontakt"
       title="Wie erreichen wir dich?"
-      intro={
-        <>
-          <p>
-            Diese Angaben bleiben bei uns. Recruiter sehen sie nicht, sie werden im nächsten Schritt geschwärzt.
-          </p>
-          <p className="mt-3">
-            <SampleLink onClick={() => update(sampleContact)} />
-          </p>
-        </>
-      }
+      intro="Diese Angaben bleiben bei uns. Recruiter sehen sie nicht, sie kennen dich nur unter einem Kürzel."
       onBack={onBack}
       onNext={onNext}
       nextDisabled={!ok}
     >
+      {draft.cvHinweis && <p className="mb-8 bg-surface p-5 text-lg">{draft.cvHinweis}</p>}
       <h2 className="text-xl font-semibold">Kontakt</h2>
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <Field label="Vorname" autoComplete="given-name" value={draft.vorname} onChange={set('vorname')} />
         <Field label="Nachname" autoComplete="family-name" value={draft.nachname} onChange={set('nachname')} />
-        <Field label="E-Mail" type="email" autoComplete="email" value={draft.email} onChange={set('email')} hint="Hierhin schicken wir den Link zu deinem Bewerberprofil." />
-        <Field label="Telefon (optional)" type="tel" autoComplete="tel" value={draft.telefon} onChange={set('telefon')} />
+        <Field label="E-Mail" type="email" autoComplete="email" value={draft.email} onChange={set('email')} />
+        <Field
+          label="Telefon"
+          type="tel"
+          autoComplete="tel"
+          value={draft.telefon}
+          onChange={set('telefon')}
+          hint="Aus deinem Namen und den letzten vier Ziffern entsteht dein Kürzel."
+        />
       </div>
 
       <h2 className="mt-14 text-xl font-semibold">Demografische Angaben</h2>
@@ -63,139 +133,7 @@ export function Kontakt({ draft, update, onBack, onNext }: StepProps) {
   )
 }
 
-/* ---------- Anonymisieren und Lebenslauf hochladen ---------- */
-
-function CvPreview({ draft, redacted }: { draft: Draft; redacted: boolean }) {
-  const name = `${draft.vorname || 'Vorname'} ${draft.nachname || 'Nachname'}`
-  return (
-    <div className="aspect-[1/1.3] w-full bg-white p-5 text-[11px] leading-snug text-ink sm:p-7 sm:text-[13px]" aria-label="Vorschau deines Lebenslaufs">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[1.6em] font-semibold leading-tight">
-            <Redact text={name} on={redacted} delay={0} />
-          </p>
-          <p className="mt-2">
-            <Redact text={`${draft.wohnort || 'Wohnort'} · geb. ${draft.geburtsjahr || '2003'}`} on={redacted} delay={180} />
-          </p>
-          <p className="mt-1">
-            <Redact text={draft.email || 'mail@beispiel.de'} on={redacted} delay={320} />
-          </p>
-        </div>
-        <div className="relative aspect-[3/4] w-[22%] shrink-0 bg-surface-2">
-          {redacted && <span aria-hidden className="absolute inset-0 origin-left animate-redact bg-ink" style={{ animationDelay: '440ms' }} />}
-        </div>
-      </div>
-      <p className="mt-6 font-semibold">Ausbildung</p>
-      <p className="mt-1">Universität Münster, Wirtschaftsinformatik, seit 2023</p>
-      <p className="mt-1">
-        Abitur, <Redact text="Gymnasium am Stadtpark" on={redacted} delay={560} />
-      </p>
-      <p className="mt-5 font-semibold">Erfahrung</p>
-      <p className="mt-1">Werkstudent Datenanalyse, Stadtwerke, seit 2025</p>
-      <p className="mt-1">Tutor Statistik I, 2024 bis 2025</p>
-      <p className="mt-5 font-semibold">Skills</p>
-      <p className="mt-1">Excel, Python, SQL, Power BI, Präsentieren</p>
-      <p className="mt-5 font-semibold">Persönliches</p>
-      <p className="mt-1">
-        <Redact text="Familienstand ledig, Religion römisch-katholisch" on={redacted} delay={680} />
-      </p>
-    </div>
-  )
-}
-
-export function Anonym({ draft, update, onBack, onNext }: StepProps) {
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [drag, setDrag] = useState(false)
-  const hasCv = !!draft.cvName
-  const takeFile = (f?: File | null) => f && update({ cvName: f.name })
-
-  const fields: [string, string][] = [
-    ['Name', `${draft.vorname} ${draft.nachname}`],
-    ['E-Mail', draft.email],
-    ['Telefon', draft.telefon],
-    ['Geburtsjahr', draft.geburtsjahr],
-    ['Geschlecht', draft.geschlecht],
-    ['Staatsangehörigkeit', draft.staatsangehoerigkeit],
-    ['Wohnort', draft.wohnort],
-  ]
-
-  return (
-    <FormShell
-      step="anonym"
-      wide
-      title="Wir schwärzen alles, was nichts zählt."
-      intro="Deine Kontaktdaten und demografischen Angaben werden für Recruiter unkenntlich gemacht. Das gilt auch für deinen Lebenslauf."
-      onBack={onBack}
-      onNext={onNext}
-      nextDisabled={!hasCv}
-      nextLabel="Lebenslauf auslesen"
-    >
-      <div className="grid gap-10 md:grid-cols-2">
-        <div>
-          <h2 className="text-xl font-semibold">Deine Angaben aus Schritt eins</h2>
-          <dl className="mt-5 space-y-3 bg-surface p-6 text-lg">
-            {fields.map(([k, v], i) => (
-              <div key={k} className="grid grid-cols-[10rem_1fr] gap-3 max-sm:grid-cols-1 max-sm:gap-0.5">
-                <dt className="text-muted">{k}</dt>
-                <dd className="min-w-0">
-                  <Redact text={v} delay={200 + i * 110} />
-                </dd>
-              </div>
-            ))}
-          </dl>
-
-          <h2 className="mt-12 text-xl font-semibold">Lebenslauf hochladen</h2>
-          <div
-            onDragOver={(e) => {
-              e.preventDefault()
-              setDrag(true)
-            }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => {
-              e.preventDefault()
-              setDrag(false)
-              takeFile(e.dataTransfer.files[0])
-            }}
-            className={`mt-5 flex flex-col items-start gap-4 p-6 transition-colors ${drag ? 'bg-accent text-white' : 'bg-surface'}`}
-          >
-            {hasCv ? (
-              <>
-                <p className="text-lg">
-                  <span className="font-semibold">{draft.cvName}</span> ist hochgeladen und geschwärzt.
-                </p>
-                <Button variant="secondary" onClick={() => update({ cvName: null })}>
-                  Andere Datei wählen
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-lg">PDF hierher ziehen oder auswählen, höchstens 5 MB.</p>
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => fileRef.current?.click()}>Datei auswählen</Button>
-                  <Button variant="secondary" onClick={() => update({ cvName: 'Lebenslauf.pdf' })}>
-                    Beispiel-Lebenslauf
-                  </Button>
-                </div>
-              </>
-            )}
-            <input ref={fileRef} type="file" accept="application/pdf" className="sr-only" onChange={(e) => takeFile(e.target.files?.[0])} />
-          </div>
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold">{hasCv ? 'So sieht der Recruiter deinen Lebenslauf' : 'Vorschau deines Lebenslaufs'}</h2>
-          <div className="mt-5 bg-surface-2 p-4 sm:p-6">
-            <CvPreview draft={draft} redacted={hasCv} key={String(hasCv)} />
-          </div>
-        </div>
-      </div>
-    </FormShell>
-  )
-}
-
-/* ---------- KI-Extraktion prüfen und ergänzen ---------- */
-
-const READ_STEPS = ['Lebenslauf wird gelesen', 'Ausbildung erkannt', 'Erfahrung erkannt', 'Skills erkannt']
+/* ---------- Ausgelesene Angaben prüfen und ergänzen ---------- */
 
 function ChipEditor({ label, items, onChange, placeholder }: { label: string; items: string[]; onChange: (v: string[]) => void; placeholder: string }) {
   const [val, setVal] = useState('')
@@ -240,47 +178,15 @@ function ChipEditor({ label, items, onChange, placeholder }: { label: string; it
 }
 
 export function Pruefen({ draft, update, onBack, onNext }: StepProps) {
-  const [phase, setPhase] = useState(draft.hochschule ? READ_STEPS.length : 0)
-  const loading = phase < READ_STEPS.length
-
-  useEffect(() => {
-    if (!loading) return
-    const t = setTimeout(() => {
-      if (phase === READ_STEPS.length - 1 && !draft.hochschule) update(sampleExtraction)
-      setPhase((p) => p + 1)
-    }, 650)
-    return () => clearTimeout(t)
-  }, [phase, loading, draft.hochschule, update])
-
   const set = (k: keyof Draft) => (e: { target: { value: string } }) => update({ [k]: e.target.value })
   const setExp = (i: number, patch: Partial<Experience>) =>
     update({ erfahrung: draft.erfahrung.map((x, j) => (j === i ? { ...x, ...patch } : x)) })
-
-  if (loading)
-    return (
-      <FormShell step="pruefen" title="Einen Moment, wir lesen mit." onBack={onBack} onNext={onNext} nextDisabled>
-        <div className="bg-surface p-8" role="status" aria-live="polite">
-          <span className="block h-2 w-full overflow-hidden rounded-full bg-surface-2">
-            <span className="block h-full w-full origin-left animate-pulse-bar rounded-full bg-ink" />
-          </span>
-          <ul className="mt-8 space-y-3 text-lg">
-            {READ_STEPS.map((s, i) => (
-              <li key={s} className={`transition-opacity duration-300 ${i <= phase ? 'opacity-100' : 'opacity-30'}`}>
-                {i < phase ? '✓ ' : ''}
-                {s}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-8 text-base text-muted">Die KI sieht nur die geschwärzte Fassung deines Lebenslaufs.</p>
-        </div>
-      </FormShell>
-    )
 
   return (
     <FormShell
       step="pruefen"
       title="Stimmt das so?"
-      intro="Das haben wir aus deinem Lebenslauf gelesen. Korrigiere, was nicht passt, und ergänze, was fehlt. Genau diese Angaben sehen später die Recruiter."
+      intro="Das haben wir aus deinem Lebenslauf gelesen. Korrigiere, was nicht passt, und ergänze, was fehlt. Genau diese Angaben sehen später die Recruiter, schreib hier also weder deinen Namen noch Kontaktdaten hinein."
       onBack={onBack}
       onNext={onNext}
     >
@@ -288,23 +194,34 @@ export function Pruefen({ draft, update, onBack, onNext }: StepProps) {
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <Field label="Hochschule" value={draft.hochschule} onChange={set('hochschule')} />
         <Field label="Studiengang" value={draft.studiengang} onChange={set('studiengang')} />
-        <Field label="Fachsemester" inputMode="numeric" value={draft.semester} onChange={set('semester')} />
+        <Field label="Fachsemester" inputMode="numeric" maxLength={2} value={draft.semester} onChange={set('semester')} />
         <Field label="Angestrebter Abschluss" value={draft.abschluss} onChange={set('abschluss')} />
+        <Field label="Voraussichtlicher Abschluss" placeholder="MM/JJJJ" value={draft.abschlussDatum} onChange={set('abschlussDatum')} />
       </div>
 
       <h2 className="mt-14 text-xl font-semibold">Erfahrung</h2>
+      <p className="mt-2 max-w-[60ch] text-base leading-relaxed text-muted">Markiere die Stationen, die für uns am wichtigsten sind.</p>
       <div className="mt-5 space-y-4">
         {draft.erfahrung.map((x, i) => (
-          <div key={i} className="grid gap-4 bg-surface p-5 sm:grid-cols-[1.4fr_1fr_0.8fr_auto] sm:items-end">
-            <Field label="Rolle" value={x.rolle} onChange={(e) => setExp(i, { rolle: e.target.value })} />
-            <Field label="Bei" value={x.firma} onChange={(e) => setExp(i, { firma: e.target.value })} />
-            <Field label="Zeitraum" value={x.zeitraum} onChange={(e) => setExp(i, { zeitraum: e.target.value })} />
-            <Button variant="ghost" onClick={() => update({ erfahrung: draft.erfahrung.filter((_, j) => j !== i) })}>
-              Entfernen
-            </Button>
+          <div key={i} className="bg-surface p-5">
+            <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr_0.8fr_auto] sm:items-end">
+              <Field label="Rolle" value={x.rolle} onChange={(e) => setExp(i, { rolle: e.target.value })} />
+              <Field label="Bei" value={x.firma} onChange={(e) => setExp(i, { firma: e.target.value })} />
+              <Field label="Zeitraum" placeholder="MM/JJJJ - MM/JJJJ" value={x.zeitraum} onChange={(e) => setExp(i, { zeitraum: e.target.value })} />
+              <Button variant="ghost" onClick={() => update({ erfahrung: draft.erfahrung.filter((_, j) => j !== i) })}>
+                Entfernen
+              </Button>
+            </div>
+            <label className="mt-4 flex items-center gap-3 text-base">
+              <input type="checkbox" checked={x.relevant} onChange={(e) => setExp(i, { relevant: e.target.checked })} className="size-5 accent-accent" />
+              Besonders relevant
+            </label>
           </div>
         ))}
-        <Button variant="secondary" onClick={() => update({ erfahrung: [...draft.erfahrung, { rolle: '', firma: '', zeitraum: '' }] })}>
+        <Button
+          variant="secondary"
+          onClick={() => update({ erfahrung: [...draft.erfahrung, { rolle: '', firma: '', zeitraum: '', details: [], relevant: false }] })}
+        >
           Erfahrung ergänzen
         </Button>
       </div>
@@ -318,57 +235,32 @@ export function Pruefen({ draft, update, onBack, onNext }: StepProps) {
   )
 }
 
-/* ---------- Offene Fragen zur Motivation ---------- */
+/* ---------- Die drei festen Fragen ---------- */
 
-export function Motivation({ draft, update, onBack, onNext }: StepProps) {
-  const fach = fachFrage(draft.studiengang)
-  const long = (v: string) => v.trim().length >= 20
-  const ok = long(draft.warum) && long(draft.fach) && long(draft.zufall)
+export function Motivation({ draft, update, onBack, onNext, questions }: StepProps & { questions: Question[] }) {
+  const long = (v?: string) => (v ?? '').trim().length >= 20
+  const ok = questions.length > 0 && questions.every((q) => long(draft.antworten[q.id]))
   return (
     <FormShell
       step="motivation"
-      title="Drei Fragen an dich."
-      intro={
-        <>
-          <p>
-            Eine zu deiner Motivation, eine zu deinem Fach und eine zufällige, die nichts mit deinem Lebenslauf zu tun
-            hat. Es gibt keine falschen Antworten, uns interessiert, wie du denkst.
-          </p>
-          <p className="mt-3">
-            <SampleLink onClick={() => update(sampleMotivation(draft.zufallFrage))} />
-          </p>
-        </>
-      }
+      title={questions.length === 3 ? 'Drei Fragen an dich.' : 'Ein paar Fragen an dich.'}
+      intro="Es gibt keine falschen Antworten, uns interessiert, wie du denkst. Schreib deinen Namen bitte nicht in die Antworten, die Recruiter lesen sie anonym."
       onBack={onBack}
       onNext={onNext}
       nextDisabled={!ok}
     >
       <div className="space-y-12">
-        <Area
-          label={MOTIVATION_FRAGE}
-          hint="Deine Motivation, in ein paar ehrlichen Sätzen."
-          value={draft.warum}
-          onChange={(e) => update({ warum: e.target.value })}
-        />
-        <Area
-          label={fach.frage}
-          hint={
-            fach.fach
-              ? `Passend zu deinem Studiengang ${draft.studiengang || ''} (${fach.fach}).`
-              : 'Zu deinem Studium. Für deinen Studiengang haben wir noch keine eigene Frage.'
-          }
-          value={draft.fach}
-          onChange={(e) => update({ fach: e.target.value })}
-        />
-        <Area
-          label={draft.zufallFrage}
-          hint="Zufällig ausgewählt, ohne Bezug zu deinem Lebenslauf. Jede Bewerbung bekommt eine andere."
-          max={500}
-          value={draft.zufall}
-          onChange={(e) => update({ zufall: e.target.value })}
-        />
+        {questions.map((q) => (
+          <Area
+            key={q.id}
+            label={q.text}
+            max={q.max_length}
+            value={draft.antworten[q.id] ?? ''}
+            onChange={(e) => update({ antworten: { ...draft.antworten, [q.id]: e.target.value } })}
+          />
+        ))}
       </div>
-      <p className="mt-6 text-base text-muted">Alle drei Antworten brauchen mindestens 20 Zeichen.</p>
+      <p className="mt-6 text-base text-muted">Jede Antwort braucht mindestens 20 Zeichen.</p>
     </FormShell>
   )
 }

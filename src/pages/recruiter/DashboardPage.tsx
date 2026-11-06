@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
-import { useScores } from '../../components/recruiter/scoresContext.ts'
-import { formatDateTime, formatDay, Initials } from '../../components/recruiter/ui.tsx'
-import { APPLICATIONS, SCREENER, TIMELINE, TODAY } from './mockData.ts'
+import { useRecruiting } from '../../components/recruiter/recruitingContext.ts'
+import { formatDateTime, formatDay, studyLine } from '../../components/recruiter/ui.tsx'
+import { TIMELINE } from './config.ts'
 
 const DAY = 24 * 60 * 60 * 1000
 const t = (iso: string) => new Date(iso).getTime()
+const TODAY = new Date().toISOString().slice(0, 10)
 
 function Timeline() {
   const start = t(TIMELINE[0].from)
@@ -48,28 +49,39 @@ function Timeline() {
 }
 
 export default function DashboardPage() {
-  const { statuses } = useScores()
-  const neu = APPLICATIONS.filter((a) => statuses[a.code] === 'eingegangen')
-  const count = (s: string) => APPLICATIONS.filter((a) => statuses[a.code] === s).length
-  const interviews = APPLICATIONS.filter((a) => a.interviewAt).sort((a, b) => t(a.interviewAt!) - t(b.interviewAt!))
+  const { me, applications, progress } = useRecruiting()
+  const open = applications.filter((a) => a.is_assigned && !a.my_completed_at)
+  const interviews = applications
+    .filter((a) => a.interview_at)
+    .sort((a, b) => t(a.interview_at!) - t(b.interview_at!))
   const dateLabel = new Date(TODAY).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   const kpis = [
-    { label: 'Neu eingegangen', value: neu.length, note: 'seit gestern' },
-    { label: 'In Prüfung', value: count('in_pruefung'), note: 'beim Screening' },
-    { label: 'Interviews geplant', value: count('interview'), note: '18.–20. November' },
-    { label: 'Entschieden', value: count('zusage') + count('absage'), note: `${count('zusage')} Zusage, ${count('absage')} Absage` },
+    { label: 'Offen für dich', value: progress?.my_open ?? 0, note: `${progress?.my_done ?? 0} schon bewertet` },
+    {
+      label: 'Fertig bewertet',
+      value: progress?.applications_done ?? 0,
+      note: `von ${progress?.applications_total ?? 0} Bewerbungen`,
+    },
+    { label: 'Interviews', value: progress?.interview ?? 0, note: 'eingeladen' },
+    {
+      label: 'Entschieden',
+      value: (progress?.accepted ?? 0) + (progress?.rejected ?? 0),
+      note: `${progress?.accepted ?? 0} angenommen, ${progress?.rejected ?? 0} abgelehnt`,
+    },
   ]
 
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="text-2xl font-semibold tracking-[-0.01em]">Willkommen, {SCREENER.firstName}</h1>
-      <p className="mt-1 text-sm text-muted">{dateLabel} · {APPLICATIONS.length} Bewerbungen in dieser Runde</p>
+      <h1 className="text-2xl font-semibold tracking-[-0.01em]">Willkommen, {me?.display_name}</h1>
+      <p className="mt-1 text-sm text-muted">
+        {dateLabel} · {progress?.applications_total ?? 0} Bewerbungen in dieser Runde
+      </p>
 
       {/* News */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-accent-soft px-5 py-4">
         <p className="text-[15px]">
-          <span className="font-semibold">{neu.length} neue Bewerbungen</span> warten auf ein erstes Screening.
+          <span className="font-semibold">{open.length} Bewerbungen</span> warten auf deine Bewertung.
         </p>
         <Link
           to="/recruiter/bewerbungen"
@@ -104,39 +116,38 @@ export default function DashboardPage() {
       <div className="mt-4 grid gap-4 lg:grid-cols-[3fr_2fr]">
         <section className="rounded-lg border border-line bg-surface">
           <div className="flex items-baseline justify-between px-5 pt-4">
-            <h2 className="text-base font-semibold">Neu eingegangen</h2>
+            <h2 className="text-base font-semibold">Warten auf dich</h2>
             <Link to="/recruiter/bewerbungen" className="text-sm text-muted hover:text-ink">
               Alle ansehen
             </Link>
           </div>
-          <ul className="mt-2">
-            {neu.map((a) => (
-              <li key={a.code} className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-t border-rule px-5 py-3 first:border-t-0">
+          <ul className="mt-2 pb-2">
+            {open.map((a) => (
+              <li key={a.id} className="grid grid-cols-[88px_1fr_auto] items-center gap-3 border-t border-rule px-5 py-3 first:border-t-0">
                 <span className="text-sm font-medium tabular-nums">{a.code}</span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm">{a.education[0].degree}</p>
-                  <p className="truncate text-xs text-muted">{a.skills.join(' · ')}</p>
+                  <p className="truncate text-sm">{studyLine(a)}</p>
+                  <p className="truncate text-xs text-muted">{a.skills?.join(' · ')}</p>
                 </div>
-                <span className="text-xs text-muted tabular-nums">{formatDay(a.receivedAt)}</span>
+                {a.created_at && <span className="text-xs text-muted tabular-nums">{formatDay(a.created_at)}</span>}
               </li>
             ))}
+            {open.length === 0 && <li className="px-5 py-3 text-sm text-muted">Gerade ist nichts offen.</li>}
           </ul>
         </section>
 
         <section className="rounded-lg border border-line bg-surface">
           <h2 className="px-5 pt-4 text-base font-semibold">Anstehende Interviews</h2>
-          <ul className="mt-2">
+          <ul className="mt-2 pb-2">
             {interviews.map((a) => (
-              <li key={a.code} className="flex items-center justify-between gap-3 border-t border-rule px-5 py-3 first:border-t-0">
-                <div>
-                  <p className="text-sm tabular-nums">{formatDateTime(a.interviewAt!)}</p>
-                  <p className="text-xs text-muted">
-                    {a.code} · {a.education[0].degree}
-                  </p>
-                </div>
-                <Initials code={a.screener} />
+              <li key={a.id} className="border-t border-rule px-5 py-3 first:border-t-0">
+                <p className="text-sm tabular-nums">{formatDateTime(a.interview_at!)}</p>
+                <p className="text-xs text-muted">
+                  {a.code} · {studyLine(a)}
+                </p>
               </li>
             ))}
+            {interviews.length === 0 && <li className="px-5 py-3 text-sm text-muted">Noch keine Interviews geplant.</li>}
           </ul>
         </section>
       </div>

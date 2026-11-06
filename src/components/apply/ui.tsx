@@ -164,7 +164,7 @@ export function FormShell({
 }) {
   return (
     <div className="flex min-h-svh flex-col">
-      <Header right={<span className="text-sm text-muted">Gespeichert als Entwurf</span>} />
+      <Header />
       <Progress current={step} />
       <main className={`mx-auto w-full flex-1 px-5 pt-10 pb-36 sm:px-8 sm:pt-14 ${wide ? 'max-w-5xl' : 'max-w-3xl'}`}>
         <Rise>

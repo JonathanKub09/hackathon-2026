@@ -6,10 +6,10 @@ const GUIDES = [
     id: 'screening',
     label: 'Screening',
     steps: [
-      'Neue Bewerbungen im Kanban unter „Eingegangen“ öffnen.',
-      'Antworten, Berufserfahrung und Skills lesen. Namen und demografische Daten sind bewusst ausgeblendet.',
-      'Alle vier Kriterien mit 1–4 Punkten bewerten. Im Zweifel die Beschreibung der Stufe lesen.',
-      'Ab 11 von 16 Punkten für ein Interview vorschlagen, darunter mit kurzer Begründung absagen.',
+      'Bewerbungen mit dem Hinweis „Deine Bewertung fehlt“ im Kanban öffnen.',
+      'Antworten, Berufserfahrung und Skills lesen. Name, demografische Daten und Lebenslauf sind bewusst ausgeblendet.',
+      'Alle vier Kriterien mit 1–4 Punkten bewerten und abgeben. Danach lässt sich die Bewertung nicht mehr ändern.',
+      'Jede Bewerbung bewerten vier Screener. Die Einschätzungen der anderen siehst du erst, wenn alle fertig sind.',
       'Jede Bewerbung innerhalb von 5 Tagen screenen.',
     ],
   },
@@ -36,7 +36,7 @@ const GUIDES = [
     id: 'entscheidung',
     label: 'Zusage und Absage',
     steps: [
-      'Der Admin setzt den finalen Status in der Auswertung.',
+      'Der Admin setzt den Status in der Auswertung.',
       'Zusagen telefonisch und per E-Mail, Absagen per E-Mail mit kurzem Feedback.',
       'Neue Trainees bekommen eine Patin oder einen Paten und starten mit dem Onboarding-Wochenende.',
     ],

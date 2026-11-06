@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { ApiError, getApplicantStatus, submitApplication } from '../../lib/api.ts'
+import type { ApplicantStatus } from '../../lib/types.ts'
 import type { Draft } from './model.ts'
-import { ORG, SLOTS } from './model.ts'
-import { ActionBar, Button, Header, Progress, Redact, Rise } from './ui.tsx'
+import { ORG, SLOTS, toApplication } from './model.ts'
+import { ActionBar, Button, Header, Progress, Rise } from './ui.tsx'
 
 type StepProps = {
   draft: Draft
@@ -22,7 +24,7 @@ export function Termin({ draft, update, onBack, onNext }: StepProps) {
   const [none, setNone] = useState(draft.termin === 'Kein Termin passt')
   return (
     <div className="pb-28">
-      <Header right={<span className="text-sm text-muted">Gespeichert als Entwurf</span>} />
+      <Header />
       <Progress current="termin" />
 
       <section className="mx-auto grid max-w-6xl gap-10 px-5 pt-14 pb-20 sm:px-8 md:grid-cols-[1.1fr_1fr] md:items-end md:pt-20 md:pb-28">
@@ -57,7 +59,7 @@ export function Termin({ draft, update, onBack, onNext }: StepProps) {
 
       <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8 md:py-28">
         <h2 className="text-[clamp(2.1rem,4.6vw,3.6rem)] font-semibold leading-[0.98] tracking-[-0.04em]">Wann passt es dir?</h2>
-        <p className="mt-4 text-lg">Alle Termine sind 30 Minuten lang. Du kannst ihn später im Bewerberprofil ändern.</p>
+        <p className="mt-4 text-lg">Alle Termine sind 30 Minuten lang.</p>
         <div className="mt-10 grid gap-8 md:grid-cols-3" role="radiogroup" aria-label="Termin wählen">
           {SLOTS.map((s) => (
             <div key={s.id} className="bg-surface p-6">
@@ -110,15 +112,30 @@ export function Termin({ draft, update, onBack, onNext }: StepProps) {
 
 /* ---------- Datenschutz und Absenden ---------- */
 
-export function Absenden({ draft, update, onBack, onNext }: StepProps) {
+export function Absenden({ draft, update, onBack, onDone }: StepProps & { onDone: (token: string) => void }) {
   const [sending, setSending] = useState(false)
-  const send = () => {
+  const [error, setError] = useState<string | null>(null)
+
+  const send = async () => {
+    if (!draft.cvFile) return
     setSending(true)
-    setTimeout(onNext, 1100)
+    setError(null)
+    try {
+      const { token } = await submitApplication(toApplication(draft), draft.cvFile)
+      onDone(token)
+    } catch (e) {
+      if (e instanceof ApiError && e.leaks.length) {
+        setError(`In deinen Angaben für Recruiter steht noch: ${e.leaks.join(', ')}. Bitte entferne das in den Schritten davor.`)
+      } else {
+        setError(e instanceof Error ? e.message : 'Die Bewerbung konnte nicht gesendet werden.')
+      }
+      setSending(false)
+    }
   }
+
   return (
     <div className="pb-28">
-      <Header right={<span className="text-sm text-muted">Gespeichert als Entwurf</span>} />
+      <Header />
       <Progress current="absenden" />
       <main className="mx-auto max-w-5xl px-5 pt-14 sm:px-8">
         <Rise>
@@ -146,14 +163,7 @@ export function Absenden({ draft, update, onBack, onNext }: StepProps) {
               </div>
               <div>
                 <dt className="text-muted">Antworten</dt>
-                <dd>
-                  {[draft.warum, draft.fach, draft.zufall].filter((a) => a.trim()).length} von 3 Fragen beantwortet:
-                  Motivation, Fachfrage, Zufallsfrage
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted">Lebenslauf</dt>
-                <dd>{draft.cvName ? `${draft.cvName}, geschwärzt` : 'nicht hochgeladen'}</dd>
+                <dd>{Object.values(draft.antworten).filter((a) => a.trim()).length} Fragen beantwortet</dd>
               </div>
             </dl>
           </section>
@@ -163,8 +173,10 @@ export function Absenden({ draft, update, onBack, onNext }: StepProps) {
               {[
                 ['Name', `${draft.vorname} ${draft.nachname}`],
                 ['E-Mail', draft.email],
+                ['Telefon', draft.telefon],
                 ['Geburtsjahr', draft.geburtsjahr],
                 ['Wohnort', draft.wohnort],
+                ['Lebenslauf', draft.cvFile?.name ?? 'nicht hochgeladen'],
               ].map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-white/70">{k}</dt>
@@ -190,88 +202,100 @@ export function Absenden({ draft, update, onBack, onNext }: StepProps) {
             <input type="checkbox" checked={draft.keepData} onChange={(e) => update({ keepData: e.target.checked })} className="mt-1.5 size-5 shrink-0 accent-accent" />
             <span>Meine Bewerbung darf zwölf Monate für spätere Bewerbungsrunden gespeichert bleiben. Freiwillig.</span>
           </label>
+          {!draft.cvFile && <p className="text-base font-medium text-[#831c1e]">Es fehlt dein Lebenslauf, bitte geh zurück zum Anfang.</p>}
+          {error && (
+            <p role="alert" className="text-base font-medium text-[#831c1e]">
+              {error}
+            </p>
+          )}
         </Rise>
       </main>
       <ActionBar
         wide
         onBack={onBack}
         onNext={send}
-        nextDisabled={!draft.consent || sending}
+        nextDisabled={!draft.consent || !draft.cvFile || sending}
         nextLabel={sending ? 'Wird gesendet …' : 'Bewerbung absenden'}
       />
     </div>
   )
 }
 
-/* ---------- Link im Postfach ---------- */
-
-export function Postfach({ draft, onNext }: { draft: Draft; onNext: () => void }) {
-  const [resent, setResent] = useState(false)
-  return (
-    <div>
-      <Header />
-      <main className="mx-auto grid max-w-6xl gap-12 px-5 pt-14 pb-24 sm:px-8 md:grid-cols-[1fr_1.1fr] md:pt-24">
-        <div>
-          <Rise>
-            <h1 className="text-[clamp(2.6rem,7vw,5.5rem)] font-semibold leading-[0.92] tracking-[-0.045em]">Schau in dein Postfach.</h1>
-          </Rise>
-          <Rise i={1}>
-            <p className="mt-8 max-w-[40ch] text-xl leading-relaxed">
-              Deine Bewerbung ist da. Wir haben dir an <span className="font-semibold">{draft.email || 'deine E-Mail-Adresse'}</span> einen Link
-              geschickt. Damit schaltest du dein Bewerberprofil frei.
-            </p>
-          </Rise>
-          <Rise i={2} className="mt-8">
-            <Button variant="secondary" onClick={() => setResent(true)} disabled={resent}>
-              {resent ? 'Neu gesendet' : 'Keine Mail? Erneut senden'}
-            </Button>
-          </Rise>
-        </div>
-
-        <Rise i={3}>
-          <article className="bg-surface p-3 sm:p-4" aria-label="Beispiel der E-Mail">
-            <div className="bg-white p-6 sm:p-8">
-              <p className="text-base text-muted">Von {ORG}, gerade eben</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em]">Bestätige deine Bewerbung</h2>
-              <div className="mt-6 space-y-4 text-lg leading-relaxed">
-                <p>Hallo {draft.vorname || 'du'},</p>
-                <p>danke für deine Bewerbung. Bestätige deine E-Mail-Adresse, dann siehst du in deinem Profil jederzeit, wo deine Bewerbung gerade steht.</p>
-              </div>
-              <Button onClick={onNext} className="mt-8">
-                Profil freischalten
-              </Button>
-              <p className="mt-6 text-sm text-muted">Der Link ist 48 Stunden gültig.</p>
-            </div>
-          </article>
-        </Rise>
-      </main>
-    </div>
-  )
-}
-
 /* ---------- Bewerberprofil mit Status ---------- */
 
-const STATUS = [
-  { t: 'Bewerbung eingegangen', d: '6. November 2026', state: 'done' },
-  { t: 'Anonymisiert und geprüft', d: '6. November 2026', state: 'done' },
-  { t: 'Screening durch das Recruiting-Team', d: 'Läuft, meist innerhalb einer Woche', state: 'now' },
-  { t: 'Kennenlerngespräch', d: 'Dein Wunschtermin ist vorgemerkt', state: 'next' },
-  { t: 'Entscheidung', d: 'Wir melden uns per Mail und hier', state: 'next' },
-] as const
+type Phase = 'done' | 'now' | 'next'
 
-export function Profil({ draft, onRestart }: { draft: Draft; onRestart: () => void }) {
+function timeline(a: ApplicantStatus): { t: string; d: string; state: Phase }[] {
+  const received = new Date(a.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
+  const screened = a.status !== 'not_rated'
+  const decided = a.status === 'accepted' || a.status === 'rejected'
+  const interview = a.interview_at
+    ? new Date(a.interview_at).toLocaleString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    : 'Termin folgt'
+
+  return [
+    { t: 'Bewerbung eingegangen', d: received, state: 'done' },
+    { t: 'Screening durch das Recruiting-Team', d: screened ? 'Abgeschlossen' : 'Läuft', state: screened ? 'done' : 'now' },
+    {
+      t: 'Kennenlerngespräch',
+      d: a.status === 'interview' ? interview : 'Wenn deine Bewerbung passt, laden wir dich ein',
+      state: a.status === 'interview' ? 'now' : decided ? 'done' : 'next',
+    },
+    {
+      t: 'Entscheidung',
+      d: a.status === 'accepted' ? 'Zusage, herzlichen Glückwunsch' : a.status === 'rejected' ? 'Diesmal hat es leider nicht gepasst' : 'Wir melden uns bei dir',
+      state: decided ? 'done' : 'next',
+    },
+  ]
+}
+
+export function Profil({ token, onRestart }: { token: string; onRestart: () => void }) {
+  const [status, setStatus] = useState<ApplicantStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    getApplicantStatus(token)
+      .then(setStatus)
+      .catch((e) => setError(e instanceof Error ? e.message : 'Dein Profil konnte nicht geladen werden.'))
+  }, [token])
+
+  if (error)
+    return (
+      <div>
+        <Header />
+        <main className="mx-auto max-w-3xl px-5 pt-14 sm:px-8">
+          <h1 className="text-3xl font-semibold">{error}</h1>
+          <Button className="mt-8" onClick={onRestart}>
+            Zur Startseite
+          </Button>
+        </main>
+      </div>
+    )
+
+  if (!status)
+    return (
+      <div>
+        <Header />
+        <p role="status" className="mx-auto max-w-3xl px-5 pt-14 text-lg sm:px-8">
+          Dein Profil wird geladen …
+        </p>
+      </div>
+    )
+
+  const steps = timeline(status)
   return (
     <div>
-      <Header right={<Button variant="ghost" onClick={onRestart}>Abmelden</Button>} />
+      <Header right={<Button variant="ghost" onClick={onRestart}>Schließen</Button>} />
       <main className="mx-auto max-w-6xl px-5 pt-12 pb-24 sm:px-8 md:pt-20">
         <Rise>
           <h1 className="text-[clamp(2.4rem,6.4vw,5rem)] font-semibold leading-[0.95] tracking-[-0.045em]">
-            Hallo {draft.vorname || 'du'}, wir lesen gerade.
+            Hallo {status.first_name}, deine Bewerbung ist da.
           </h1>
         </Rise>
         <Rise i={1}>
           <p className="mt-6 max-w-[48ch] text-xl leading-relaxed">
-            Deine Bewerbung ist im Screening. Die Recruiter kennen dich bisher nur als <span className="font-semibold tabular-nums">BW-2611-0427</span>.
+            Die Recruiter kennen dich nur als <span className="font-semibold tabular-nums">{status.code}</span>. Speichere dir diese Seite als
+            Lesezeichen, dann siehst du jederzeit, wo deine Bewerbung steht.
           </p>
         </Rise>
 
@@ -280,9 +304,9 @@ export function Profil({ draft, onRestart }: { draft: Draft; onRestart: () => vo
             <section>
               <h2 className="text-2xl font-semibold tracking-[-0.02em]">Status deiner Bewerbung</h2>
               <ol className="mt-8">
-                {STATUS.map((s, i) => (
+                {steps.map((s, i) => (
                   <li key={s.t} className="relative grid grid-cols-[2rem_1fr] gap-4 pb-8 last:pb-0">
-                    {i < STATUS.length - 1 && (
+                    {i < steps.length - 1 && (
                       <span aria-hidden className={`absolute top-8 bottom-0 left-[0.95rem] w-1 ${s.state === 'done' ? 'bg-ink' : 'bg-surface-2'}`} />
                     )}
                     <span
@@ -306,37 +330,11 @@ export function Profil({ draft, onRestart }: { draft: Draft; onRestart: () => vo
             </section>
           </Rise>
 
-          <Rise i={3} className="space-y-6">
+          <Rise i={3}>
             <section className="bg-ink p-6 text-white sm:p-8">
               <h2 className="text-xl font-semibold">Dein Wunschtermin</h2>
-              <p className="mt-3 text-2xl font-semibold tracking-[-0.02em]">{draft.termin || 'Noch kein Termin gewählt'}</p>
+              <p className="mt-3 text-2xl font-semibold tracking-[-0.02em]">{status.preferred_slot || 'Noch kein Termin gewählt'}</p>
               <p className="mt-2 text-base text-white/80">Wird bestätigt, sobald das Screening abgeschlossen ist.</p>
-              <Button variant="invert" className="mt-6">
-                Termin ändern
-              </Button>
-            </section>
-            <section className="bg-surface p-6 sm:p-8">
-              <h2 className="text-xl font-semibold">So sehen dich die Recruiter</h2>
-              <dl className="mt-4 space-y-2 text-lg">
-                <div className="flex flex-wrap gap-x-3">
-                  <dt className="text-muted">Name</dt>
-                  <dd>
-                    <Redact text={`${draft.vorname} ${draft.nachname}`} delay={400} />
-                  </dd>
-                </div>
-                <div className="flex flex-wrap gap-x-3">
-                  <dt className="text-muted">Skills</dt>
-                  <dd>{draft.skills.slice(0, 4).join(', ') || 'keine'}</dd>
-                </div>
-              </dl>
-              <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
-                <Button variant="ghost" className="px-0!">
-                  Angaben ansehen
-                </Button>
-                <Button variant="ghost" className="px-0! text-muted">
-                  Bewerbung zurückziehen
-                </Button>
-              </div>
             </section>
           </Rise>
         </div>

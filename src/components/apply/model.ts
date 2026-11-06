@@ -1,45 +1,48 @@
-// Mockup-Daten für die Bewerber-Strecke. Nichts davon geht an Supabase.
+// Datenmodell der Bewerber-Strecke und Übersetzung von und zum Backend (src/lib/api.ts).
+import type { CvCheckResult, CvEntry, NewApplication } from '../../lib/types.ts'
 
 export const ORG = 'Muster Consulting e. V.' // Platzhalter, echten Namen eintragen
 
 export type Step =
   | 'touchpoint'
   | 'start'
+  | 'lebenslauf'
   | 'kontakt'
-  | 'anonym'
   | 'pruefen'
   | 'motivation'
   | 'termin'
   | 'absenden'
-  | 'postfach'
   | 'profil'
 
-export const STEP_LABELS: Record<Step, string> = {
-  touchpoint: 'Touchpoint: QR-Code oder Link',
-  start: 'Startseite',
-  kontakt: 'Kontakt und demografische Daten',
-  anonym: 'Anonymisieren und Lebenslauf',
-  pruefen: 'KI-Extraktion prüfen',
-  motivation: 'Fragen zur Motivation',
-  termin: 'Terminabfrage',
-  absenden: 'Datenschutz und Absenden',
-  postfach: 'Link im Postfach',
-  profil: 'Bewerberprofil',
-}
-
-export const STEPS = Object.keys(STEP_LABELS) as Step[]
+export const STEPS: Step[] = [
+  'touchpoint',
+  'start',
+  'lebenslauf',
+  'kontakt',
+  'pruefen',
+  'motivation',
+  'termin',
+  'absenden',
+  'profil',
+]
 
 /** Schritte, die im Fortschrittsbalken des Formulars auftauchen. */
 export const FORM_STEPS: { id: Step; label: string }[] = [
+  { id: 'lebenslauf', label: 'Lebenslauf' },
   { id: 'kontakt', label: 'Kontakt' },
-  { id: 'anonym', label: 'Lebenslauf' },
   { id: 'pruefen', label: 'Deine Daten' },
   { id: 'motivation', label: 'Motivation' },
   { id: 'termin', label: 'Termin' },
   { id: 'absenden', label: 'Absenden' },
 ]
 
-export type Experience = { rolle: string; firma: string; zeitraum: string }
+export type Experience = {
+  rolle: string
+  firma: string
+  zeitraum: string
+  details: string[]
+  relevant: boolean
+}
 
 export type Draft = {
   vorname: string
@@ -50,156 +53,123 @@ export type Draft = {
   geschlecht: string
   staatsangehoerigkeit: string
   wohnort: string
-  cvName: string | null
+  cvFile: File | null
+  /** Hinweis, wenn der Lebenslauf nicht vollständig gelesen werden konnte. */
+  cvHinweis: string | null
   hochschule: string
   studiengang: string
   semester: string
   abschluss: string
+  abschlussDatum: string
   erfahrung: Experience[]
+  ausbildung: CvEntry[]
   skills: string[]
   sprachen: string[]
-  /** Frage 1: Motivation, für alle gleich. */
-  warum: string
-  /** Frage 2: passt zum Studiengang, siehe fachFrage(). */
-  fach: string
-  /** Frage 3: zufällig aus ZUFALL_FRAGEN, ohne Bezug zum Lebenslauf. Wird beim Start einmal gezogen. */
-  zufallFrage: string
-  zufall: string
+  /** Antworten auf die festen Fragen, Schlüssel ist die Fragen-ID. */
+  antworten: Record<string, string>
   termin: string | null
   consent: boolean
   keepData: boolean
 }
 
-const emptyDraftBase: Omit<Draft, 'zufallFrage'> = {
-  vorname: '',
-  nachname: '',
-  email: '',
-  telefon: '',
-  geburtsjahr: '',
-  geschlecht: '',
-  staatsangehoerigkeit: '',
-  wohnort: '',
-  cvName: null,
-  hochschule: '',
-  studiengang: '',
-  semester: '',
-  abschluss: '',
-  erfahrung: [],
-  skills: [],
-  sprachen: [],
-  warum: '',
-  fach: '',
-  zufall: '',
-  termin: null,
-  consent: false,
-  keepData: false,
-}
-
-/** Neuer leerer Entwurf mit frisch gezogener Zufallsfrage. */
 export function newDraft(): Draft {
-  return { ...emptyDraftBase, zufallFrage: ZUFALL_FRAGEN[Math.floor(Math.random() * ZUFALL_FRAGEN.length)].frage }
-}
-
-export const MOTIVATION_FRAGE = 'Warum möchtest du bei uns mitmachen?'
-
-/** Fachspezifische Fragen, ausgewählt über Stichworte im Studiengang. Reihenfolge zählt: der erste Treffer gewinnt. */
-const FACH_FRAGEN: { match: RegExp; fach: string; frage: string }[] = [
-  {
-    match: /informatik|data|daten|software|computer/i,
-    fach: 'Informatik',
-    frage: 'Ein Mittelständler will „etwas mit KI“ machen, weiß aber nicht was. Wie findest du heraus, wo es sich lohnt?',
-  },
-  {
-    match: /bwl|wirtschaft|vwl|management|finance|ökonom|controlling|marketing/i,
-    fach: 'Wirtschaft',
-    frage: 'Ein Café macht jedes Jahr mehr Umsatz, aber weniger Gewinn. Woran kann das liegen, und wie prüfst du es?',
-  },
-  {
-    match: /jura|recht|law/i,
-    fach: 'Recht',
-    frage: 'Ein Start-up will Kundendaten für Werbung nutzen. Worauf weist du es als Erstes hin, und warum?',
-  },
-  {
-    match: /ingenieur|maschinenbau|elektro|technik|bau|physik/i,
-    fach: 'Ingenieurwesen',
-    frage: 'In einer Produktion steigt der Ausschuss seit drei Monaten. Wie gehst du in der ersten Woche vor?',
-  },
-  {
-    match: /psycho|sozial|pädagog|soziolog/i,
-    fach: 'Sozialwissenschaften',
-    frage: 'Ein Team arbeitet seit dem Umzug ins Großraumbüro schlechter zusammen. Wie findest du die Ursache?',
-  },
-]
-
-const FACH_FALLBACK =
-  'Welche Methode oder welches Wissen aus deinem Studium würdest du in ein Beratungsprojekt mitbringen, und wofür?'
-
-export function fachFrage(studiengang: string): { frage: string; fach: string | null } {
-  const hit = FACH_FRAGEN.find((f) => f.match.test(studiengang))
-  return hit ? { frage: hit.frage, fach: hit.fach } : { frage: FACH_FALLBACK, fach: null }
-}
-
-/** Allgemeine Fragen ohne Bezug zum Lebenslauf. Zeigen, wie jemand denkt. Das Beispiel ist nur fürs Mockup. */
-export const ZUFALL_FRAGEN: { frage: string; beispiel: string }[] = [
-  {
-    frage: 'Wie viele Fahrräder gibt es in deiner Stadt? Beschreib, wie du zu einer Schätzung kommst.',
-    beispiel: 'Ich fange bei den Einwohnern an, schätze die Haushalte und setze pro Haushalt etwa zwei Räder an. Dazu kommen Leihräder.',
-  },
-  {
-    frage: 'Was hast du zuletzt gelernt, nur weil es dich interessiert hat?',
-    beispiel: 'Wie Fahrpläne im Nahverkehr erstellt werden. Ich habe mir die offenen Daten unserer Stadtwerke angesehen und mich gewundert, wie viel Handarbeit drinsteckt.',
-  },
-  {
-    frage: 'Wenn du eine Regel an deiner Hochschule ändern dürftest: Welche, und warum?',
-    beispiel: 'Prüfungen dürften auch als Projekt im Team abgelegt werden. So lernt man, was man später wirklich braucht.',
-  },
-  {
-    frage: 'Erklär einem zehnjährigen Kind, was eine Unternehmensberatung macht.',
-    beispiel: 'Wenn eine Firma ein Problem hat und nicht weiterweiß, kommen wir, hören zu, rechnen nach und schlagen vor, was sie anders machen kann.',
-  },
-  {
-    frage: 'Welche Entscheidung würdest du heute anders treffen, und was hast du daraus gelernt?',
-    beispiel: 'Ich habe ein Gruppenprojekt allein fertig gemacht, statt früh um Hilfe zu bitten. Heute spreche ich Probleme in der ersten Woche an.',
-  },
-  {
-    frage: 'Du hast eine Woche Zeit und 500 Euro für ein eigenes Projekt. Was machst du?',
-    beispiel: 'Ich baue mit zwei Freunden eine Tauschbörse für Lehrbücher an unserer Uni und teste sie eine Woche in der Mensa.',
-  },
-]
-
-export const sampleContact: Partial<Draft> = {
-  vorname: 'Alex',
-  nachname: 'Beispiel',
-  email: 'alex.beispiel@uni-mail.de',
-  telefon: '0151 2345678',
-  geburtsjahr: '2003',
-  geschlecht: 'keine Angabe',
-  staatsangehoerigkeit: 'deutsch',
-  wohnort: 'Münster',
-}
-
-/** Was die "KI" aus dem Lebenslauf liest. Im echten Produkt kommt das vom Backend. */
-export const sampleExtraction: Partial<Draft> = {
-  hochschule: 'Universität Münster',
-  studiengang: 'Wirtschaftsinformatik (B. Sc.)',
-  semester: '5',
-  abschluss: 'Bachelor, voraussichtlich 2027',
-  erfahrung: [
-    { rolle: 'Werkstudent Datenanalyse', firma: 'Stadtwerke', zeitraum: '2025 – heute' },
-    { rolle: 'Tutor Statistik I', firma: 'Universität', zeitraum: '2024 – 2025' },
-  ],
-  skills: ['Excel', 'Python', 'SQL', 'Präsentieren', 'Power BI'],
-  sprachen: ['Deutsch (Muttersprache)', 'Englisch (C1)'],
-}
-
-/** Beispielantworten. Die zur Zufallsfrage hängt davon ab, welche Frage gezogen wurde. */
-export function sampleMotivation(zufallFrage: string): Partial<Draft> {
   return {
-    warum:
-      'Ich will sehen, wie das, was ich im Studium lerne, in echten Unternehmen funktioniert, und dabei im Team Verantwortung übernehmen.',
-    fach:
-      'Ich würde mit Interviews in zwei, drei Abteilungen anfangen und nach Aufgaben suchen, die oft wiederholt werden und klare Daten haben. Dort lohnt sich KI am ehesten.',
-    zufall: ZUFALL_FRAGEN.find((z) => z.frage === zufallFrage)?.beispiel ?? '',
+    vorname: '',
+    nachname: '',
+    email: '',
+    telefon: '',
+    geburtsjahr: '',
+    geschlecht: '',
+    staatsangehoerigkeit: '',
+    wohnort: '',
+    cvFile: null,
+    cvHinweis: null,
+    hochschule: '',
+    studiengang: '',
+    semester: '',
+    abschluss: '',
+    abschlussDatum: '',
+    erfahrung: [],
+    ausbildung: [],
+    skills: [],
+    sprachen: [],
+    antworten: {},
+    termin: null,
+    consent: false,
+    keepData: false,
+  }
+}
+
+/** Füllt den Entwurf mit dem, was das Backend aus dem Lebenslauf gelesen hat. */
+export function fromCheck(result: CvCheckResult): Partial<Draft> {
+  const { contact, profile, cv } = result
+  let cvHinweis: string | null = null
+  if (!result.has_text) {
+    cvHinweis = 'Dein PDF enthält keinen lesbaren Text, vermutlich ist es ein Scan. Bitte fülle die Felder von Hand aus.'
+  } else if (!result.format_recognized) {
+    cvHinweis = 'Wir konnten deinen Lebenslauf nicht vollständig lesen. Bitte ergänze die fehlenden Felder von Hand.'
+  }
+
+  return {
+    cvHinweis,
+    vorname: contact.first_name,
+    nachname: contact.last_name,
+    email: contact.email,
+    telefon: contact.phone,
+    wohnort: contact.city,
+    hochschule: profile.university,
+    studiengang: profile.study_program,
+    abschluss: profile.degree,
+    abschlussDatum: profile.expected_graduation,
+    erfahrung: cv.experiences.map((e) => ({
+      rolle: e.title,
+      firma: e.organization,
+      zeitraum: `${e.start_date} - ${e.end_date}`,
+      details: e.details,
+      relevant: false,
+    })),
+    ausbildung: cv.educations,
+    skills: cv.skills,
+    sprachen: cv.languages,
+  }
+}
+
+/** Baut aus dem Entwurf die Bewerbung fürs Backend. */
+export function toApplication(d: Draft): NewApplication {
+  return {
+    first_name: d.vorname.trim(),
+    last_name: d.nachname.trim(),
+    email: d.email.trim(),
+    phone: d.telefon.trim(),
+    consent_privacy: d.consent,
+    keep_data: d.keepData,
+    demographics: {
+      geburtsjahr: d.geburtsjahr,
+      geschlecht: d.geschlecht,
+      staatsangehoerigkeit: d.staatsangehoerigkeit,
+      wohnort: d.wohnort,
+    },
+    study_program: d.studiengang,
+    degree: d.abschluss,
+    university: d.hochschule,
+    expected_graduation: d.abschlussDatum,
+    semester: d.semester,
+    preferred_slot: d.termin,
+    skills: d.skills,
+    languages: d.sprachen,
+    educations: d.ausbildung,
+    experiences: d.erfahrung.map((e) => {
+      const [start_date = '', end_date = ''] = e.zeitraum.split(' - ')
+      return {
+        start_date,
+        end_date,
+        title: e.rolle,
+        organization: e.firma,
+        details: e.details,
+        is_relevant: e.relevant,
+      }
+    }),
+    answers: Object.entries(d.antworten).map(([question_id, answer]) => ({ question_id, answer })),
   }
 }
 
@@ -212,3 +182,6 @@ export const SLOTS: Slot[] = [
 ]
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+
+/** Für das Kürzel braucht das Backend mindestens vier Ziffern. */
+export const isPhone = (v: string) => v.replace(/\D/g, '').length >= 4

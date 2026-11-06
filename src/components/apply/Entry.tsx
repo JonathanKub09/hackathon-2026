@@ -60,9 +60,9 @@ const visible = [
 ]
 
 const ablauf = [
+  ['Lebenslauf hochladen', 'Wir lesen ihn aus und füllen damit das Formular für dich vor. Recruiter sehen ihn nie.'],
   ['Kontaktdaten angeben', 'Nur für uns, damit wir dich erreichen. Recruiter sehen sie nie.'],
-  ['Lebenslauf hochladen', 'Wir schwärzen Name, Foto, Alter und Adresse automatisch.'],
-  ['Daten prüfen', 'Unsere KI liest Ausbildung, Erfahrung und Skills aus. Du korrigierst und ergänzt.'],
+  ['Daten prüfen', 'Du korrigierst und ergänzt, was wir ausgelesen haben.'],
   ['Drei Fragen beantworten', 'Kurz und ehrlich: Warum wir, und was dich antreibt.'],
   ['Termin wählen', 'Ein Kennenlerngespräch von 30 Minuten, online oder vor Ort.'],
 ]
