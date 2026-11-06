@@ -1,11 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { SCREENER } from '../../pages/recruiter/mockData.ts'
-
-const NAV = [
-  { to: '/recruiter', label: 'Übersicht', end: true },
-  { to: '/recruiter/bewerbungen', label: 'Bewerbungen', end: false },
-  { to: '/recruiter/admin', label: 'Auswertung (Admin)', end: false },
-]
+import { signOut } from '../../lib/api.ts'
+import { useRecruiting } from './recruitingContext.ts'
+import { initialsOf } from './ui.tsx'
 
 function navClass({ isActive }: { isActive: boolean }) {
   return `flex h-[34px] items-center rounded-md px-2.5 text-sm transition-colors ${
@@ -14,6 +10,14 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 export default function Shell() {
+  const { me } = useRecruiting()
+  const nav = [
+    { to: '/recruiter', label: 'Übersicht', end: true },
+    { to: '/recruiter/bewerbungen', label: 'Bewerbungen', end: false },
+    { to: '/recruiter/ranking', label: 'Ranking', end: false },
+    ...(me?.role === 'admin' ? [{ to: '/recruiter/admin', label: 'Auswertung (Admin)', end: false }] : []),
+  ]
+
   return (
     <div className="min-h-screen md:flex">
       {/* Sidebar ab Tablet */}
@@ -23,7 +27,7 @@ export default function Shell() {
           <p className="text-xs text-muted">Wintersemester 2026/27</p>
         </div>
         <nav className="mt-6 flex flex-col gap-0.5">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
               {item.label}
             </NavLink>
@@ -31,24 +35,27 @@ export default function Shell() {
         </nav>
         <div className="mt-auto flex items-center gap-2.5 px-2.5">
           <span className="inline-flex size-7 items-center justify-center rounded-full bg-raised text-xs font-semibold">
-            {SCREENER.code}
+            {initialsOf(me?.display_name ?? '')}
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-medium">{SCREENER.firstName} K.</p>
-            <Link to="/recruiter/login" className="text-xs text-muted hover:text-ink">
+            <p className="truncate text-sm font-medium">{me?.display_name}</p>
+            <button type="button" onClick={() => signOut()} className="text-xs text-muted hover:text-ink">
               Abmelden
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
 
       {/* Leiste auf dem Handy */}
       <header className="flex items-center gap-1 overflow-x-auto border-b border-line px-4 py-2 md:hidden">
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
             {item.label}
           </NavLink>
         ))}
+        <button type="button" onClick={() => signOut()} className="ml-auto h-[34px] whitespace-nowrap px-2.5 text-sm text-muted">
+          Abmelden
+        </button>
       </header>
 
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-6">

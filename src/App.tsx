@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
+import StartPage from './pages/StartPage.tsx'
 import ApplyPage from './pages/apply/ApplyPage.tsx'
 import RecruiterPage from './pages/recruiter/RecruiterPage.tsx'
 
@@ -6,7 +7,7 @@ import RecruiterPage from './pages/recruiter/RecruiterPage.tsx'
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/apply" replace />} />
+      <Route path="/" element={<StartPage />} />
       <Route path="/apply" element={<ApplyPage />} />
       <Route path="/recruiter/*" element={<RecruiterPage />} />
     </Routes>

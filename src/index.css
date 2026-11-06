@@ -14,8 +14,38 @@
   --color-primary: #1a1f1f;
   --color-accent: #0e6c78;
   --color-accent-soft: #e2f0f1;
+
+  /* Ergänzungen für die Bewerber-Strecke (src/components/apply) */
+  --color-surface-2: #e5e7e7;
+  --color-accent-dark: #0a5560;
+
+  --animate-redact: redact 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-rise: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-pulse-bar: pulse-bar 1.4s ease-in-out infinite;
+
+  @keyframes redact {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pulse-bar {
+    0%, 100% { transform: scaleX(0.25); }
+    50% { transform: scaleX(1); }
+  }
 }
 
 body {
   @apply bg-ground text-ink antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

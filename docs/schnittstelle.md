@@ -48,7 +48,7 @@ Stehen Name, E-Mail oder Telefon in Angaben, die Screener sehen, also in Antwort
 
 ## Screener-Seite `/recruiter`
 
-Login mit `signIn(email, password)`, danach gibt `getMe()` Rolle und Anzeigename zurück. Ist das Ergebnis `null`, gehört das Konto nicht zum Team. `signOut()` meldet ab.
+Login mit `signIn(email, password)`, Registrierung mit `registerStaff(...)`. Danach gibt `getMe()` Rolle und Anzeigename zurück. Ist das Ergebnis `null`, gehört das Konto nicht zum Team. `signOut()` meldet ab.
 
 **Dashboard**
 - `getProgress()` liefert den Recruiting-Fortschritt: `applications_done` von `applications_total`, `reviews_done` von `reviews_total`, eigene offene und erledigte Bewerbungen sowie die Anzahl je Status.
@@ -97,13 +97,9 @@ Das Backend bildet es aus den ersten 2 Buchstaben des Vornamens, den letzten 2 B
 
 ## Konten für Screener und Admins
 
-1. Konto im Supabase-Dashboard unter Authentication > Users anlegen.
-2. Im SQL Editor die Rolle vergeben, `role` ist `screener` oder `admin`:
+Auf `/recruiter/login` gibt es „Neu hier? Konto erstellen“. Für die Registrierung braucht man einen Einladungscode, der Code entscheidet über die Rolle. Es gibt je einen für Screener und Admins, das Konto ist sofort aktiv.
 
-```sql
-insert into public.staff (user_id, role, display_name)
-select id, 'screener', 'Anzeigename' from auth.users where email = 'name@example.com';
-```
+Die Codes stehen nicht im Repo, weil es öffentlich ist. Die Datenbank kennt nur ihre Hashes in `private.invite_codes`, einen neuen Code legt man dort als SHA-256-Hash an und löscht den alten.
 
 Es braucht mindestens 4 Screener, sonst bekommt keine Bewerbung ihre 4 Bewertungen. Vorhandene Bewerbungen werden beim Anlegen automatisch zugewiesen.
 
@@ -111,4 +107,5 @@ Es braucht mindestens 4 Screener, sonst bekommt keine Bewerbung ihre 4 Bewertung
 
 - Schema: [supabase/migrations/](../supabase/migrations/)
 - Logik für Bewerbungen: [supabase/functions/apply/](../supabase/functions/apply/)
+- Registrierung: [supabase/functions/register/](../supabase/functions/register/)
 - Lebenslauf-Format: [testdata/cvs/README.md](../testdata/cvs/README.md)
