@@ -37,32 +37,37 @@ Die Datenbank setzt das durch, nicht das Frontend. Bewerber haben kein Konto und
    - `format_recognized: false`: Der Lebenslauf hat nicht das Standardformat, Stationen werden von Hand eingetragen.
 2. **Maske durchklicken und Lücken füllen:** Leere Felder sind nicht erkannt worden, alles bleibt änderbar.
    - Persönliches aus `contact`: Vorname, Nachname, E-Mail, Telefon, Ort. Dazu die Datenschutz-Einwilligung und weitere demografische Felder in `demographics`.
-   - Studium aus `profile`: Studiengang, Abschluss, Hochschule, voraussichtlicher Abschluss.
+   - Studium aus `profile`: Studiengang, Abschluss, Hochschule, voraussichtlicher Abschluss. Das Fachsemester trägt die Person selbst ein, Feld `semester`.
    - Aus `cv`: Stationen, Ausbildung, Skills und Sprachen. Jede Station bekommt eine Checkbox für `is_relevant`, das ist die „most relevant experience“.
 3. **Fragen:** Die 3 festen Fragen aus `getQuestions()` beantworten lassen. `max_length` ist das Zeichenlimit.
-4. **Absenden:** `submitApplication(application, file)` gibt das Kürzel zurück, das die Erfolgsseite anzeigt.
+4. **Wunschtermin:** Die Auswahl kommt als Text in `preferred_slot`.
+5. **Absenden:** Mit Einwilligung und optional `keep_data` gibt `submitApplication(application, file)` das Kürzel und `token` zurück.
+6. **Bewerberprofil:** `getApplicantStatus(token)` liefert den Stand der eigenen Bewerbung. Wer den Zugang hat, sieht nur diese Angaben, also den Link nur der Person selbst zeigen.
 
 Stehen Name, E-Mail oder Telefon in Angaben, die Screener sehen, also in Antworten, Stationen, Studium oder Skills, lehnt das Backend ab. Dann wirft der Aufruf einen `ApiError`, und `error.leaks` nennt die Treffer. Die Person korrigiert die Stelle und sendet erneut.
 
 ## Screener-Seite `/recruiter`
 
-Login mit `supabase.auth.signInWithPassword`, danach gibt `getMyRole()` die Rolle zurück. Ist sie `null`, gehört das Konto nicht zum Team.
+Login mit `signIn(email, password)`, danach gibt `getMe()` Rolle und Anzeigename zurück. Ist das Ergebnis `null`, gehört das Konto nicht zum Team. `signOut()` meldet ab.
 
 **Dashboard**
 - `getProgress()` liefert den Recruiting-Fortschritt: `applications_done` von `applications_total`, `reviews_done` von `reviews_total`, eigene offene und erledigte Bewerbungen sowie die Anzahl je Status.
 - Admins bekommen zusätzlich `screeners` mit dem Stand jeder Person.
-- `getMyQueue()` liefert die eigenen Bewerbungen, offene zuerst. Offen heißt `completed_at` ist leer.
+- `getOverview()` liefert alles fürs Kanban: eigene Zuweisungen und fertig bewertete Bewerbungen mit `status`, `reviews_done` von `reviews_required`, `is_assigned`, `my_completed_at`, `score` und `criterion_scores`.
+- `getMyQueue()` liefert nur die eigene Warteschlange, offene zuerst.
 
 **Bewertung einer Bewerbung**
 - `getApplicationDetails(id)` liefert Studium, Skills, Sprachen, Stationen, Ausbildung und Antworten. Stationen mit `is_relevant` hervorheben.
-- `getCriteria()` liefert die Kriterien für das Formular, je Kriterium eine Skala von 1 bis 5.
-- `submitRating(id, scores, comment)` speichert alle Kriterien auf einmal. Danach ist die Bewertung gesperrt.
+- `getCriteria()` liefert die Kriterien mit `basis` und den 4 Stufentexten in `levels`, die Skala geht von 1 bis 4.
+- `submitRating(id, scores, comment)` speichert alle Kriterien auf einmal. Danach ist die Bewertung gesperrt, `getMyRating(id)` zeigt sie wieder an.
+- Die Punkte sammelt das Frontend also zuerst lokal und schickt sie mit einem Button ab.
 
 **Ranking**
 - `getRanking()` ist die Übersicht für Screener, `getRankingWithContacts()` für Admins mit Name, E-Mail, Telefon und `cv_path`.
+- `getAdminOverview()` zeigt Admins zusätzlich noch nicht fertig bewertete Bewerbungen. `criterion_scores` enthält den Schnitt je Kriterium.
 - Klick auf einen Eintrag: `getApplicationDetails(application_id)` für die Infos und `getReviews(application_id)` für die 4 Einschätzungen.
 - Admins öffnen den Lebenslauf mit `getCvUrl(cv_path)`. Der Link gilt 60 Sekunden.
-- Admins verschieben Bewerbungen mit `setApplicationStatus(id, status)`.
+- Admins verschieben Bewerbungen mit `setApplicationStatus(id, status, interviewAt)`. Der Termin ist optional und steht danach in `interview_at`.
 
 ## Status
 
@@ -70,8 +75,9 @@ Login mit `supabase.auth.signInWithPassword`, danach gibt `getMyRole()` die Roll
 | --- | --- | --- |
 | `not_rated` | Nicht bewertet, die 4 Bewertungen sind noch nicht da | automatisch beim Eingang |
 | `rated` | Bewertet | automatisch nach der 4. Bewertung, oder ein Admin setzt zurück |
+| `interview` | Zum Interview eingeladen | Admin im Ranking |
 | `rejected` | Abgelehnt | Admin im Ranking |
-| `accepted` | Angenommen, zum Beispiel zum Interview eingeladen | Admin im Ranking |
+| `accepted` | Angenommen | Admin im Ranking |
 
 Verschieben geht nur bei fertig bewerteten Bewerbungen.
 
@@ -83,7 +89,7 @@ Verschieben geht nur bei fertig bewerteten Bewerbungen.
 - **Reihenfolge:** Im Ranking stehen nur vollständig bewertete Bewerbungen, es wächst also bis zum Schluss.
 - **Unabhängigkeit:** Fremde Bewertungen bleiben verborgen, bis alle 4 fertig sind.
 
-Fragen und Kriterien sind Platzhalter, die echten kommen noch. Die Kriterien sind Motivation 30 %, Fachliche Eignung 30 %, Erfahrung 25 % und Kommunikation 15 %. Sie liegen in den Tabellen `questions` und `rating_criteria`.
+Fragen und Kriterien sind Platzhalter, die echten kommen noch. Die Kriterien stammen aus der Screener-Ansicht mit Skala 1 bis 4, die Gewichte sind Motivation 30 %, Fachfrage 30 %, Berufserfahrung 25 % und Skills 15 %. Sie liegen in den Tabellen `questions` und `rating_criteria`.
 
 ## Kürzel
 
