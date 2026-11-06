@@ -1,5 +1,7 @@
 # Rolle 1: Backend (Supabase)
 
+> **Stand:** Das Backend steht. Abläufe und Aufrufe stehen in [docs/schnittstelle.md](../schnittstelle.md), die Datei gilt vor dieser Rolle.
+
 Du baust alles, worauf die beiden Frontends zugreifen: Datenbank, Dateispeicher, Login und den gemeinsamen Supabase-Client.
 Stack und Gesamtplan stehen in [STACK.md](../../STACK.md).
 

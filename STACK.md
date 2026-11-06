@@ -1,5 +1,7 @@
 # Tech-Stack & Plan – Bewerbungs-App
 
+> Das Backend steht. Datenmodell, Abläufe und Rechte stehen in [docs/schnittstelle.md](docs/schnittstelle.md), die Datei gilt vor diesem Plan.
+
 App für den Bewerbungsprozess einer studentischen Unternehmensberatung.
 Bewerber geben Lebenslauf, Motivationstext usw. ein. Die Daten werden in Supabase gespeichert.
 Recruiter sehen nur Lebenslauf und Motivationstext.
@@ -26,52 +28,11 @@ npm i @supabase/supabase-js react-router-dom
 npm i -D tailwindcss @tailwindcss/vite
 ```
 
-`.env.local` (nicht committen):
+`.env.local` aus `.env.example` kopieren, die Werte stehen dort schon.
 
-```
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
+## Supabase
 
-## Supabase-Schema
-
-```sql
-create table applications (
-  id uuid primary key default gen_random_uuid(),
-  created_at timestamptz default now(),
-  name text not null,
-  email text not null,
-  studiengang text,
-  semester int,
-  motivation text not null,
-  cv_path text,                      -- Pfad im Storage-Bucket "cvs"
-  consent_privacy boolean not null,  -- Checkbox
-  interests text[]                   -- z.B. Checkboxen "Strategy", "Tech", ...
-);
-
-alter table applications enable row level security;
-
--- Bewerber (anonym) dürfen nur einfügen
-create policy "anon insert" on applications for insert to anon with check (true);
-
--- Recruiter: eigene View mit nur CV + Motivation
-create view recruiter_view with (security_invoker = true) as
-  select id, created_at, motivation, cv_path from applications;
-
-create policy "recruiter read" on applications for select to authenticated using (true);
-```
-
-### Storage
-
-- Bucket `cvs` als **private** anlegen
-- Insert-Policy für `anon`, Select-Policy für `authenticated`
-- Recruiter-Seite öffnet PDFs über `createSignedUrl`
-
-### Hinweis zum Datenschutz
-
-Die View steuert nur, was die Recruiter-Seite anzeigt. Sicher ist sie nicht, denn ein eingeloggter Nutzer kann die Tabelle trotzdem direkt abfragen.
-Wenn „Recruiter sehen nur CV + Motivation“ wirklich durchgesetzt werden soll, die Daten auf zwei Tabellen aufteilen (`applications_private` und `applications_public`).
-Für die Hackathon-Demo reicht die View.
+Das Projekt läuft bereits, siehe [docs/schnittstelle.md](docs/schnittstelle.md).
 
 ## Zeitplan (60 Min.)
 
