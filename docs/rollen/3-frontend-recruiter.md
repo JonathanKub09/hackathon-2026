@@ -1,5 +1,7 @@
 # Rolle 3: Frontend Recruiter (`/recruiter`)
 
+> **Stand:** Das Backend steht. Abläufe und Aufrufe stehen in [docs/schnittstelle.md](../schnittstelle.md), die Datei gilt vor dieser Rolle.
+
 Du baust die Ansicht für die Screener: einloggen, Bewerbungen durchsehen, Lebenslauf öffnen.
 **Recruiter sehen nur Motivationstext und Lebenslauf**, keinen Namen, keine E-Mail und keine Checkbox-Angaben.
 Stack und Gesamtplan stehen in [STACK.md](../../STACK.md).

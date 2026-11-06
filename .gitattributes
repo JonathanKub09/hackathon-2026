@@ -1,2 +1,5 @@
 # Einheitliche Zeilenenden über Windows, macOS und Linux
 * text=auto
+
+# PDFs nie als Text behandeln, sonst beschädigen Zeilenenden die Dateien
+*.pdf binary
