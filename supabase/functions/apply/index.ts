@@ -1,6 +1,7 @@
 // Öffentlicher Eingang für Bewerbungen. Bewerber haben keine direkten Datenbankrechte.
 //   POST /apply/check   Lebenslauf auslesen und Maske vorausfüllen, speichert nichts
-//   POST /apply/submit  Bewerbung prüfen und speichern, gibt das Kürzel zurück
+//   POST /apply/submit  Bewerbung prüfen und speichern, gibt Kürzel und Profil-Zugang zurück
+//   POST /apply/status  Stand der eigenen Bewerbung über den Profil-Zugang
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { getDocumentProxy } from 'npm:unpdf@2.1.0'
 import { findContact, findLeaks, findProfile, parseCv, type Identity } from './cv.ts'
@@ -111,14 +112,24 @@ async function handleSubmit(form: FormData): Promise<Response> {
   })
   if (upload.error) throw upload.error
 
-  const { data: code, error } = await admin.rpc('create_application', {
+  const { data, error } = await admin.rpc('create_application', {
     p: { ...payload, ...person, cv_path },
   })
   if (error) {
     await admin.storage.from('cvs').remove([cv_path])
     return json({ error: error.message }, 422)
   }
-  return json({ code })
+  return json(data)
+}
+
+async function handleStatus(form: FormData): Promise<Response> {
+  const token = String(form.get('token') ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(token)) throw new BadRequest('Der Zugang ist ungültig')
+
+  const { data, error } = await admin.rpc('get_application_status', { p_token: token })
+  if (error) throw error
+  if (!data) return json({ error: 'Diese Bewerbung gibt es nicht' }, 404)
+  return json(data)
 }
 
 Deno.serve(async (req) => {
@@ -130,6 +141,7 @@ Deno.serve(async (req) => {
     const path = new URL(req.url).pathname
     if (path.endsWith('/check')) return await handleCheck(form)
     if (path.endsWith('/submit')) return await handleSubmit(form)
+    if (path.endsWith('/status')) return await handleStatus(form)
     return json({ error: 'Unbekannter Pfad' }, 404)
   } catch (error) {
     if (error instanceof BadRequest) return json({ error: error.message }, 400)

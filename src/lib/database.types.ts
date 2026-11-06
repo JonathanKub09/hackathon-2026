@@ -55,7 +55,10 @@ export type Database = {
           degree: string | null
           expected_graduation: string | null
           id: string
+          interview_at: string | null
           languages: string[]
+          preferred_slot: string | null
+          semester: number | null
           skills: string[]
           status: Database["public"]["Enums"]["application_status"]
           study_program: string | null
@@ -67,7 +70,10 @@ export type Database = {
           degree?: string | null
           expected_graduation?: string | null
           id?: string
+          interview_at?: string | null
           languages?: string[]
+          preferred_slot?: string | null
+          semester?: number | null
           skills?: string[]
           status?: Database["public"]["Enums"]["application_status"]
           study_program?: string | null
@@ -79,7 +85,10 @@ export type Database = {
           degree?: string | null
           expected_graduation?: string | null
           id?: string
+          interview_at?: string | null
           languages?: string[]
+          preferred_slot?: string | null
+          semester?: number | null
           skills?: string[]
           status?: Database["public"]["Enums"]["application_status"]
           study_program?: string | null
@@ -89,6 +98,7 @@ export type Database = {
       }
       applications_private: {
         Row: {
+          access_token: string
           application_id: string
           consent_privacy: boolean
           created_at: string
@@ -96,10 +106,12 @@ export type Database = {
           demographics: Json
           email: string
           first_name: string
+          keep_data: boolean
           last_name: string
           phone: string
         }
         Insert: {
+          access_token?: string
           application_id: string
           consent_privacy: boolean
           created_at?: string
@@ -107,10 +119,12 @@ export type Database = {
           demographics?: Json
           email: string
           first_name: string
+          keep_data?: boolean
           last_name: string
           phone: string
         }
         Update: {
+          access_token?: string
           application_id?: string
           consent_privacy?: boolean
           created_at?: string
@@ -118,6 +132,7 @@ export type Database = {
           demographics?: Json
           email?: string
           first_name?: string
+          keep_data?: boolean
           last_name?: string
           phone?: string
         }
@@ -236,26 +251,32 @@ export type Database = {
       }
       rating_criteria: {
         Row: {
+          basis: string
           description: string
           id: string
           is_active: boolean
           label: string
+          levels: string[]
           position: number
           weight: number
         }
         Insert: {
+          basis?: string
           description?: string
           id: string
           is_active?: boolean
           label: string
+          levels?: string[]
           position?: number
           weight: number
         }
         Update: {
+          basis?: string
           description?: string
           id?: string
           is_active?: boolean
           label?: string
+          levels?: string[]
           position?: number
           weight?: number
         }
@@ -359,16 +380,76 @@ export type Database = {
       }
     }
     Views: {
+      admin_overview: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          criterion_scores: Json | null
+          degree: string | null
+          expected_graduation: string | null
+          id: string | null
+          interview_at: string | null
+          is_assigned: boolean | null
+          languages: string[] | null
+          my_completed_at: string | null
+          preferred_slot: string | null
+          rank: number | null
+          reviews_done: number | null
+          reviews_required: number | null
+          score: number | null
+          semester: number | null
+          skills: string[] | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          study_program: string | null
+          university: string | null
+          cv_path: string | null
+          demographics: Json | null
+          email: string | null
+          first_name: string | null
+          keep_data: boolean | null
+          last_name: string | null
+          phone: string | null
+        }
+        Relationships: []
+      }
+      application_overview: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          criterion_scores: Json | null
+          degree: string | null
+          expected_graduation: string | null
+          id: string | null
+          interview_at: string | null
+          is_assigned: boolean | null
+          languages: string[] | null
+          my_completed_at: string | null
+          preferred_slot: string | null
+          rank: number | null
+          reviews_done: number | null
+          reviews_required: number | null
+          score: number | null
+          semester: number | null
+          skills: string[] | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          study_program: string | null
+          university: string | null
+        }
+        Relationships: []
+      }
       ranking: {
         Row: {
           application_id: string | null
           code: string | null
           created_at: string | null
+          criterion_scores: Json | null
           degree: string | null
           expected_graduation: string | null
+          interview_at: string | null
           rank: number | null
           score: number | null
           screener_count: number | null
+          semester: number | null
           status: Database["public"]["Enums"]["application_status"] | null
           study_program: string | null
         }
@@ -379,19 +460,23 @@ export type Database = {
           application_id: string | null
           code: string | null
           created_at: string | null
-          cv_path: string | null
+          criterion_scores: Json | null
           degree: string | null
-          demographics: Json | null
-          email: string | null
           expected_graduation: string | null
-          first_name: string | null
-          last_name: string | null
-          phone: string | null
+          interview_at: string | null
           rank: number | null
           score: number | null
           screener_count: number | null
+          semester: number | null
           status: Database["public"]["Enums"]["application_status"] | null
           study_program: string | null
+          cv_path: string | null
+          demographics: Json | null
+          email: string | null
+          first_name: string | null
+          keep_data: boolean | null
+          last_name: string | null
+          phone: string | null
         }
         Relationships: []
       }
@@ -404,7 +489,10 @@ export type Database = {
           degree: string | null
           expected_graduation: string | null
           id: string | null
+          interview_at: string | null
           languages: string[] | null
+          preferred_slot: string | null
+          semester: number | null
           skills: string[] | null
           status: Database["public"]["Enums"]["application_status"] | null
           study_program: string | null
@@ -433,11 +521,13 @@ export type Database = {
       }
     }
     Functions: {
-      create_application: { Args: { p: Json }; Returns: string }
+      create_application: { Args: { p: Json }; Returns: Json }
+      get_application_status: { Args: { p_token: string }; Returns: Json }
       get_screening_progress: { Args: never; Returns: Json }
       set_application_status: {
         Args: {
           p_application_id: string
+          p_interview_at?: string
           p_status: Database["public"]["Enums"]["application_status"]
         }
         Returns: undefined
@@ -448,7 +538,7 @@ export type Database = {
       }
     }
     Enums: {
-      application_status: "not_rated" | "rated" | "rejected" | "accepted"
+      application_status: "not_rated" | "rated" | "rejected" | "interview" | "accepted"
       staff_role: "screener" | "admin"
     }
     CompositeTypes: {

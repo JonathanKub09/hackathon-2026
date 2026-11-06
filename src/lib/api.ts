@@ -3,13 +3,15 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { CV_BUCKET, supabase } from './supabase'
 import type {
+  ApplicantStatus,
   ApplicationDetails,
   ApplicationStatus,
   CvCheckResult,
   NewApplication,
   Scores,
   ScreeningProgress,
-  StaffRole,
+  StaffMember,
+  SubmitResult,
 } from './types'
 
 export class ApiError extends Error {
@@ -21,7 +23,7 @@ export class ApiError extends Error {
   }
 }
 
-async function callApply<T>(path: 'check' | 'submit', body: FormData): Promise<T> {
+async function callApply<T>(path: 'check' | 'submit' | 'status', body: FormData): Promise<T> {
   const { data, error } = await supabase.functions.invoke(`apply/${path}`, { body })
   if (error) {
     if (error instanceof FunctionsHttpError) {
@@ -51,7 +53,14 @@ export function submitApplication(application: NewApplication, file: File) {
   const form = new FormData()
   form.append('payload', JSON.stringify(application))
   form.append('file', file)
-  return callApply<{ code: string }>('submit', form)
+  return callApply<SubmitResult>('submit', form)
+}
+
+// Bewerberprofil: Stand der eigenen Bewerbung über den Zugang aus submitApplication
+export function getApplicantStatus(token: string) {
+  const form = new FormData()
+  form.append('token', token)
+  return callApply<ApplicantStatus>('status', form)
 }
 
 export async function getQuestions() {
@@ -60,16 +69,26 @@ export async function getQuestions() {
 
 // Screener und Admins --------------------------------------------------------
 
-export async function getMyRole(): Promise<StaffRole | null> {
+export async function signIn(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw new ApiError(error.message)
+}
+
+export async function signOut() {
+  await supabase.auth.signOut()
+}
+
+// Rolle und Anzeigename der angemeldeten Person, null ohne Anmeldung oder ohne Team-Zugang
+export async function getMe(): Promise<StaffMember | null> {
   const { data } = await supabase.auth.getUser()
   if (!data.user) return null
   const { data: staff, error } = await supabase
     .from('staff')
-    .select('role')
+    .select('role, display_name')
     .eq('user_id', data.user.id)
     .maybeSingle()
   if (error) throw new ApiError(error.message)
-  return staff?.role ?? null
+  return staff
 }
 
 export async function getProgress() {
@@ -84,6 +103,23 @@ export async function getMyQueue() {
       .select('*')
       .order('completed_at', { ascending: true, nullsFirst: true })
       .order('assigned_at'),
+  )
+}
+
+// Alles für Kanban und Dashboard: eigene Zuweisungen und fertig bewertete Bewerbungen
+export async function getOverview() {
+  return unwrap(
+    await supabase.from('application_overview').select('*').order('created_at', { ascending: false }),
+  )
+}
+
+// Wie getOverview mit Personendaten, nur für Admins
+export async function getAdminOverview() {
+  return unwrap(
+    await supabase
+      .from('admin_overview')
+      .select('*')
+      .order('rank', { ascending: true, nullsFirst: false }),
   )
 }
 
@@ -114,6 +150,19 @@ export async function getCvUrl(cvPath: string) {
   return signedUrl
 }
 
+// Eigene Bewertung einer Bewerbung, leer solange nichts abgegeben ist
+export async function getMyRating(applicationId: string) {
+  const { data } = await supabase.auth.getUser()
+  if (!data.user) return []
+  return unwrap(
+    await supabase
+      .from('ratings')
+      .select('criterion_id, score')
+      .eq('application_id', applicationId)
+      .eq('screener_id', data.user.id),
+  )
+}
+
 export async function submitRating(applicationId: string, scores: Scores, comment?: string) {
   unwrap(
     await supabase.rpc('submit_rating', {
@@ -133,12 +182,17 @@ export async function getRankingWithContacts() {
   return unwrap(await supabase.from('ranking_admin').select('*').order('rank'))
 }
 
-// Nur für Admins und nur bei fertig bewerteten Bewerbungen
-export async function setApplicationStatus(applicationId: string, status: ApplicationStatus) {
+// Nur für Admins und nur bei fertig bewerteten Bewerbungen, beim Interview optional mit Termin
+export async function setApplicationStatus(
+  applicationId: string,
+  status: ApplicationStatus,
+  interviewAt?: string,
+) {
   unwrap(
     await supabase.rpc('set_application_status', {
       p_application_id: applicationId,
       p_status: status,
+      p_interview_at: interviewAt,
     }),
   )
 }
