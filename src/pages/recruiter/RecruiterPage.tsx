@@ -1,9 +1,26 @@
-// Rolle 3: Recruiter-Ansicht. Siehe docs/rollen/3-frontend-recruiter.md
+import { Route, Routes } from 'react-router-dom'
+import Shell from '../../components/recruiter/Shell.tsx'
+import { ScoresProvider } from '../../components/recruiter/scores.tsx'
+import AdminPage from './AdminPage.tsx'
+import DashboardPage from './DashboardPage.tsx'
+import HowToPage from './HowToPage.tsx'
+import KanbanPage from './KanbanPage.tsx'
+import LoginPage from './LoginPage.tsx'
+
+// Rolle 3: Screener-Ansicht. Siehe docs/rollen/3-frontend-recruiter.md
+// Erste Version nur mit Mock-Daten (mockData.ts), noch ohne Supabase.
 export default function RecruiterPage() {
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-semibold">Recruiter</h1>
-      <p className="mt-2 text-gray-600">Hier entstehen Login und Bewerbungsliste.</p>
-    </main>
+    <ScoresProvider>
+      <Routes>
+        <Route path="login" element={<LoginPage />} />
+        <Route element={<Shell />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="bewerbungen" element={<KanbanPage />} />
+          <Route path="admin" element={<AdminPage />} />
+          <Route path="howto" element={<HowToPage />} />
+        </Route>
+      </Routes>
+    </ScoresProvider>
   )
 }
