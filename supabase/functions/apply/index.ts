@@ -1,9 +1,9 @@
 // Öffentlicher Eingang für Bewerbungen. Bewerber haben keine direkten Datenbankrechte.
-//   POST /apply/check   Lebenslauf auslesen und Anonymität prüfen, speichert nichts
+//   POST /apply/check   Lebenslauf auslesen und Maske vorausfüllen, speichert nichts
 //   POST /apply/submit  Bewerbung prüfen und speichern, gibt das Kürzel zurück
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { getDocumentProxy, getMeta } from 'npm:unpdf@2.1.0'
-import { findGroup, findLeaks, parseCv, type Identity } from './cv.ts'
+import { getDocumentProxy } from 'npm:unpdf@2.1.0'
+import { findContact, findLeaks, findProfile, parseCv, type Identity } from './cv.ts'
 
 const MAX_BYTES = 5 * 1024 * 1024
 const CORS = {
@@ -26,7 +26,7 @@ function json(body: unknown, status = 200): Response {
 
 class BadRequest extends Error {}
 
-async function readPdf(form: FormData): Promise<{ bytes: Uint8Array; text: string; meta: string }> {
+async function readFile(form: FormData): Promise<Uint8Array> {
   const file = form.get('file')
   if (!(file instanceof File)) throw new BadRequest('Es fehlt eine Datei im Feld "file"')
   if (file.size > MAX_BYTES) throw new BadRequest('Die Datei ist größer als 5 MB')
@@ -35,7 +35,11 @@ async function readPdf(form: FormData): Promise<{ bytes: Uint8Array; text: strin
   if (new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') {
     throw new BadRequest('Die Datei ist kein PDF')
   }
+  return bytes
+}
 
+// Baut die Zeilen über die y-Position auf, weil PDFs nur einzelne Textstücke enthalten.
+async function extractText(bytes: Uint8Array): Promise<string> {
   const pdf = await getDocumentProxy(bytes.slice())
   const lines: string[] = []
   for (let number = 1; number <= pdf.numPages; number++) {
@@ -51,10 +55,7 @@ async function readPdf(form: FormData): Promise<{ bytes: Uint8Array; text: strin
       lines.push(rows.get(y)!.sort((a, b) => a.x - b.x).map((part) => part.text).join(''))
     }
   }
-
-  const { info } = await getMeta(pdf)
-  const meta = [info?.Title, info?.Author, info?.Subject, info?.Keywords].filter(Boolean).join(' ')
-  return { bytes, text: lines.join('\n'), meta }
+  return lines.join('\n')
 }
 
 function identityFrom(source: Record<string, unknown>): Identity {
@@ -72,22 +73,13 @@ function identityFrom(source: Record<string, unknown>): Identity {
 }
 
 async function handleCheck(form: FormData): Promise<Response> {
-  const person = identityFrom(Object.fromEntries(form))
-  const { text, meta } = await readPdf(form)
+  const text = await extractText(await readFile(form))
   const cv = parseCv(text)
-
-  const { data: groups, error } = await admin
-    .from('question_groups')
-    .select('slug, keywords, position')
-  if (error) throw error
-
-  const leaks = findLeaks(`${text}\n${meta}`, person)
   return json({
-    anonymous: leaks.length === 0,
-    leaks,
     has_text: text.trim().length > 0,
     format_recognized: cv.experiences.length > 0,
-    group: findGroup(cv, groups),
+    contact: findContact(text),
+    profile: findProfile(cv),
     cv,
   })
 }
@@ -97,12 +89,21 @@ async function handleSubmit(form: FormData): Promise<Response> {
   if (typeof raw !== 'string') throw new BadRequest('Es fehlt das Feld "payload"')
   const payload = JSON.parse(raw)
   const person = identityFrom(payload)
-  const { bytes, text, meta } = await readPdf(form)
+  const bytes = await readFile(form)
 
-  // Auch Antworten und Stationen sehen die Screener, also gilt die Prüfung auch für sie.
-  const typed = JSON.stringify([payload.answers, payload.experiences, payload.educations])
-  const leaks = findLeaks(`${text}\n${meta}\n${typed}`, person)
-  if (leaks.length) return json({ error: 'Die Bewerbung ist nicht anonym', leaks }, 422)
+  // Diese Angaben sehen die Screener, also darf darin niemand erkennbar sein.
+  const visible = JSON.stringify([
+    (payload.answers ?? []).map((item: { answer: string }) => item.answer),
+    payload.experiences,
+    payload.educations,
+    payload.skills,
+    payload.languages,
+    payload.study_program,
+    payload.degree,
+    payload.university,
+  ])
+  const leaks = findLeaks(visible, person)
+  if (leaks.length) return json({ error: 'Die Angaben für Screener sind nicht anonym', leaks }, 422)
 
   const cv_path = `${crypto.randomUUID()}.pdf`
   const upload = await admin.storage.from('cvs').upload(cv_path, bytes, {

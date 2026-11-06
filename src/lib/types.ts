@@ -6,12 +6,22 @@ type Tables = Database['public']['Tables']
 type Views = Database['public']['Views']
 
 export type StaffRole = Database['public']['Enums']['staff_role']
+export type ApplicationStatus = Database['public']['Enums']['application_status']
 
 export type Identity = {
   first_name: string
   last_name: string
   email: string
   phone: string
+}
+
+export type Contact = Identity & { city: string }
+
+export type Profile = {
+  study_program: string
+  degree: string
+  university: string
+  expected_graduation: string
 }
 
 export type CvEntry = {
@@ -31,24 +41,23 @@ export type ParsedCv = {
 }
 
 export type CvCheckResult = {
-  anonymous: boolean
-  leaks: string[]
   has_text: boolean
   format_recognized: boolean
-  group: string
+  contact: Contact
+  profile: Profile
   cv: ParsedCv
 }
 
-export type NewApplication = Identity & {
-  consent_privacy: boolean
-  group_slug: string
-  demographics?: Json
-  skills: string[]
-  languages: string[]
-  educations: CvEntry[]
-  experiences: (CvExperience & { is_relevant: boolean })[]
-  answers: { question_id: string; answer: string }[]
-}
+export type NewApplication = Identity &
+  Partial<Profile> & {
+    consent_privacy: boolean
+    demographics?: Json
+    skills: string[]
+    languages: string[]
+    educations: CvEntry[]
+    experiences: (CvExperience & { is_relevant: boolean })[]
+    answers: { question_id: string; answer: string }[]
+  }
 
 export type Question = Tables['questions']['Row']
 export type RatingCriterion = Tables['rating_criteria']['Row']
@@ -67,6 +76,10 @@ export type ScreeningProgress = {
   reviews_total: number
   my_open: number
   my_done: number
+  not_rated: number
+  rated: number
+  rejected: number
+  accepted: number
   screeners?: { name: string; done: number; open: number }[]
 }
 

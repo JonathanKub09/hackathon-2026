@@ -1,4 +1,4 @@
-// Liest das Standardformat aus testdata/cvs/README.md und prüft die Anonymität.
+// Liest das Standardformat aus testdata/cvs/README.md und prüft die Angaben für Screener.
 
 export type CvEntry = {
   start_date: string
@@ -16,6 +16,13 @@ export type ParsedCv = {
   languages: string[]
 }
 
+export type Profile = {
+  study_program: string
+  degree: string
+  university: string
+  expected_graduation: string
+}
+
 export type Identity = {
   first_name: string
   last_name: string
@@ -23,11 +30,18 @@ export type Identity = {
   phone: string
 }
 
-export type QuestionGroup = { slug: string; keywords: string[]; position: number }
+export type Contact = Identity & { city: string }
 
 const ENTRY = /^(\d{2}\/\d{4}) - (\d{2}\/\d{4}|heute) \| (.+?) \| (.+)$/
 const HEADINGS = ['ERFAHRUNG', 'AUSBILDUNG', 'KENNTNISSE', 'SPRACHEN']
+const DEGREE =
+  /^(B\.?\s?(?:Sc|A|Eng|Ed)\.?|M\.?\s?(?:Sc|A|Eng|Ed)\.?|Bachelor(?: of \p{L}+)?|Master(?: of \p{L}+)?|Diplom|Staatsexamen)\s+(.+)$/iu
+const NAME_LINE = /^\p{L}[\p{L}'.-]*(?: \p{L}[\p{L}'.-]*){1,3}$/u
 const ANY_EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,}/iu
+const LABELLED_PHONE =
+  /(?<![\p{L}\p{N}])(?:Telefon|Tel\.?|Mobil|Handy|Phone)\s*:?\s*([+\d][\d\s()/-]{4,}\d)/iu
+const INTERNATIONAL_PHONE = /\+\d{1,3}[\s/-]?\d[\d\s/-]{5,}\d/
+const LABELLED_CITY = /^(?:Ort|Wohnort|Stadt)\s*:\s*(.+)$/im
 
 export function parseCv(text: string): ParsedCv {
   const cv: ParsedCv = { experiences: [], educations: [], skills: [], languages: [] }
@@ -67,37 +81,54 @@ export function parseCv(text: string): ParsedCv {
   return cv
 }
 
-// Ganze Wörter, auch mit Umlauten. \b kennt in JavaScript keine Umlaute.
-function wholeWord(term: string): RegExp {
-  const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'giu')
-}
+// Felder ohne Treffer bleiben leer, dann füllt die Person sie selbst aus.
+export function findContact(text: string): Contact {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+  const firstHeading = lines.findIndex((line) => HEADINGS.includes(line))
+  const header = lines.slice(0, firstHeading === -1 ? 8 : firstHeading)
+  const name = header.find((line) => NAME_LINE.test(line) && !/^curriculum vitae$/i.test(line))
+  const parts = name?.split(' ') ?? []
 
-// Stichworte zählen nur in Titeln und Kenntnissen, nicht beim Namen der Organisation.
-export function findGroup(cv: ParsedCv, groups: QuestionGroup[]): string {
-  const haystack = [...cv.experiences, ...cv.educations]
-    .map((entry) => entry.title)
-    .concat(cv.skills)
-    .join(' | ')
-
-  let best = { slug: '', hits: 0 }
-  for (const group of [...groups].sort((a, b) => a.position - b.position)) {
-    const hits = group.keywords.reduce(
-      (sum, keyword) => sum + (haystack.match(wholeWord(keyword))?.length ?? 0),
-      0,
-    )
-    if (hits > best.hits) best = { slug: group.slug, hits }
+  return {
+    first_name: parts.slice(0, -1).join(' '),
+    last_name: parts.at(-1) ?? '',
+    email: text.match(ANY_EMAIL)?.[0] ?? '',
+    phone: (text.match(LABELLED_PHONE)?.[1] ?? text.match(INTERNATIONAL_PHONE)?.[0] ?? '').trim(),
+    city: text.match(LABELLED_CITY)?.[1].trim() ?? '',
   }
-  return best.slug || 'generisch'
 }
 
+// Das Studium ist der erste Ausbildungseintrag mit akademischem Abschluss.
+export function findProfile(cv: ParsedCv): Profile {
+  const study = cv.educations.find((entry) => DEGREE.test(entry.title))
+  if (!study) return { study_program: '', degree: '', university: '', expected_graduation: '' }
+
+  const [, degree, study_program] = study.title.match(DEGREE)!
+  return {
+    study_program,
+    degree,
+    university: study.organization,
+    expected_graduation: study.end_date === 'heute' ? '' : study.end_date,
+  }
+}
+
+// Ganze Wörter und Groß-/Kleinschreibung, sonst träfe der Nachname Klein auch das Wort klein.
+function nameIn(text: string, name: string): boolean {
+  const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(text)
+}
+
+// Prüft alles, was Screener zu sehen bekommen. Der Lebenslauf selbst gehört nicht dazu.
 export function findLeaks(text: string, person: Identity): string[] {
   const leaks: string[] = []
-  if (person.first_name && wholeWord(person.first_name).test(text)) leaks.push('Vorname')
-  if (person.last_name && wholeWord(person.last_name).test(text)) leaks.push('Nachname')
+  if (person.first_name && nameIn(text, person.first_name)) leaks.push('Vorname')
+  if (person.last_name && nameIn(text, person.last_name)) leaks.push('Nachname')
   if (ANY_EMAIL.test(text)) leaks.push('E-Mail-Adresse')
 
   const phone = person.phone.replace(/\D/g, '')
-  if (phone.length >= 6 && text.replace(/\D/g, '').includes(phone)) leaks.push('Telefonnummer')
+  const ownPhone = phone.length >= 6 && text.replace(/\D/g, '').includes(phone)
+  if (ownPhone || LABELLED_PHONE.test(text) || INTERNATIONAL_PHONE.test(text)) {
+    leaks.push('Telefonnummer')
+  }
   return leaks
 }

@@ -4,8 +4,8 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { CV_BUCKET, supabase } from './supabase'
 import type {
   ApplicationDetails,
+  ApplicationStatus,
   CvCheckResult,
-  Identity,
   NewApplication,
   Scores,
   ScreeningProgress,
@@ -40,9 +40,9 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
 
 // Bewerber -------------------------------------------------------------------
 
-export function checkCv(person: Identity, file: File) {
+// Liest den Lebenslauf aus und liefert die Werte zum Vorausfüllen, speichert nichts
+export function checkCv(file: File) {
   const form = new FormData()
-  Object.entries(person).forEach(([key, value]) => form.append(key, value))
   form.append('file', file)
   return callApply<CvCheckResult>('check', form)
 }
@@ -54,16 +54,8 @@ export function submitApplication(application: NewApplication, file: File) {
   return callApply<{ code: string }>('submit', form)
 }
 
-export async function getGroups() {
-  return unwrap(
-    await supabase.from('question_groups').select('slug, name').order('position'),
-  )
-}
-
-export async function getQuestions(groupSlug: string) {
-  return unwrap(
-    await supabase.from('questions').select('*').eq('group_slug', groupSlug).order('position'),
-  )
+export async function getQuestions() {
+  return unwrap(await supabase.from('questions').select('*').order('position'))
 }
 
 // Screener und Admins --------------------------------------------------------
@@ -116,6 +108,7 @@ export async function getApplicationDetails(id: string): Promise<ApplicationDeta
   }
 }
 
+// Nur für Admins, den Pfad liefert getRankingWithContacts()
 export async function getCvUrl(cvPath: string) {
   const { signedUrl } = unwrap(await supabase.storage.from(CV_BUCKET).createSignedUrl(cvPath, 60))
   return signedUrl
@@ -138,6 +131,16 @@ export async function getRanking() {
 // Nur für Admins, für Screener bleibt die Liste leer
 export async function getRankingWithContacts() {
   return unwrap(await supabase.from('ranking_admin').select('*').order('rank'))
+}
+
+// Nur für Admins und nur bei fertig bewerteten Bewerbungen
+export async function setApplicationStatus(applicationId: string, status: ApplicationStatus) {
+  unwrap(
+    await supabase.rpc('set_application_status', {
+      p_application_id: applicationId,
+      p_status: status,
+    }),
+  )
 }
 
 // Einschätzungen der 4 Screener, sichtbar sobald alle fertig sind

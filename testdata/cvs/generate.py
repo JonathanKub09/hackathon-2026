@@ -24,7 +24,7 @@ HERE = Path(__file__).parent
 INK = HexColor("#1F2933")
 RULE = HexColor("#CBD2D9")
 
-TITLE = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=20, leading=25, textColor=INK)
+NAME = ParagraphStyle("name", fontName="Helvetica-Bold", fontSize=20, leading=25, textColor=INK)
 HEADING = ParagraphStyle("heading", fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=INK)
 ENTRY = ParagraphStyle("entry", fontName="Helvetica-Bold", fontSize=10, leading=14, textColor=INK)
 DETAIL = ParagraphStyle(
@@ -60,7 +60,13 @@ def entry(item: dict) -> KeepTogether:
 
 
 def story(cv: dict) -> list:
-    flowables = [para("Lebenslauf", TITLE)]
+    person = cv["identitaet"]
+    flowables = [
+        para(f"{person['vorname']} {person['nachname']}", NAME),
+        para(f"E-Mail: {person['email']}", BODY),
+        para(f"Telefon: {person['telefon']}", BODY),
+        para(f"Ort: {person['ort']}", BODY),
+    ]
     flowables += section("ERFAHRUNG") + [entry(item) for item in cv["erfahrung"]]
     flowables += section("AUSBILDUNG") + [entry(item) for item in cv["ausbildung"]]
     flowables += section("KENNTNISSE") + [para(", ".join(cv["kenntnisse"]), BODY)]
@@ -79,7 +85,7 @@ def main() -> None:
             topMargin=18 * mm,
             bottomMargin=18 * mm,
             title="Mock-Lebenslauf (fiktiv)",
-            author="Anonym",
+            author="Hackathon-Testdaten",
             invariant=1,
         )
         document.build(story(cv))

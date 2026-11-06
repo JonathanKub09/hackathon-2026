@@ -52,45 +52,47 @@ export type Database = {
         Row: {
           code: string
           created_at: string
-          cv_path: string
-          group_slug: string
+          degree: string | null
+          expected_graduation: string | null
           id: string
           languages: string[]
           skills: string[]
+          status: Database["public"]["Enums"]["application_status"]
+          study_program: string | null
+          university: string | null
         }
         Insert: {
           code: string
           created_at?: string
-          cv_path: string
-          group_slug: string
+          degree?: string | null
+          expected_graduation?: string | null
           id?: string
           languages?: string[]
           skills?: string[]
+          status?: Database["public"]["Enums"]["application_status"]
+          study_program?: string | null
+          university?: string | null
         }
         Update: {
           code?: string
           created_at?: string
-          cv_path?: string
-          group_slug?: string
+          degree?: string | null
+          expected_graduation?: string | null
           id?: string
           languages?: string[]
           skills?: string[]
+          status?: Database["public"]["Enums"]["application_status"]
+          study_program?: string | null
+          university?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "applications_group_slug_fkey"
-            columns: ["group_slug"]
-            isOneToOne: false
-            referencedRelation: "question_groups"
-            referencedColumns: ["slug"]
-          },
-        ]
+        Relationships: []
       }
       applications_private: {
         Row: {
           application_id: string
           consent_privacy: boolean
           created_at: string
+          cv_path: string | null
           demographics: Json
           email: string
           first_name: string
@@ -101,6 +103,7 @@ export type Database = {
           application_id: string
           consent_privacy: boolean
           created_at?: string
+          cv_path?: string | null
           demographics?: Json
           email: string
           first_name: string
@@ -111,6 +114,7 @@ export type Database = {
           application_id?: string
           consent_privacy?: boolean
           created_at?: string
+          cv_path?: string | null
           demographics?: Json
           email?: string
           first_name?: string
@@ -209,58 +213,26 @@ export type Database = {
           },
         ]
       }
-      question_groups: {
-        Row: {
-          keywords: string[]
-          name: string
-          position: number
-          slug: string
-        }
-        Insert: {
-          keywords?: string[]
-          name: string
-          position?: number
-          slug: string
-        }
-        Update: {
-          keywords?: string[]
-          name?: string
-          position?: number
-          slug?: string
-        }
-        Relationships: []
-      }
       questions: {
         Row: {
-          group_slug: string
           id: string
           max_length: number
           position: number
           text: string
         }
         Insert: {
-          group_slug: string
           id?: string
           max_length?: number
           position: number
           text: string
         }
         Update: {
-          group_slug?: string
           id?: string
           max_length?: number
           position?: number
           text?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "questions_group_slug_fkey"
-            columns: ["group_slug"]
-            isOneToOne: false
-            referencedRelation: "question_groups"
-            referencedColumns: ["slug"]
-          },
-        ]
+        Relationships: []
       }
       rating_criteria: {
         Row: {
@@ -392,10 +364,13 @@ export type Database = {
           application_id: string | null
           code: string | null
           created_at: string | null
-          group_slug: string | null
+          degree: string | null
+          expected_graduation: string | null
           rank: number | null
           score: number | null
           screener_count: number | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          study_program: string | null
         }
         Relationships: []
       }
@@ -404,15 +379,19 @@ export type Database = {
           application_id: string | null
           code: string | null
           created_at: string | null
+          cv_path: string | null
+          degree: string | null
           demographics: Json | null
           email: string | null
+          expected_graduation: string | null
           first_name: string | null
-          group_slug: string | null
           last_name: string | null
           phone: string | null
           rank: number | null
           score: number | null
           screener_count: number | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          study_program: string | null
         }
         Relationships: []
       }
@@ -422,11 +401,14 @@ export type Database = {
           code: string | null
           completed_at: string | null
           created_at: string | null
-          cv_path: string | null
-          group_slug: string | null
+          degree: string | null
+          expected_graduation: string | null
           id: string | null
           languages: string[] | null
           skills: string[] | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          study_program: string | null
+          university: string | null
         }
         Relationships: []
       }
@@ -453,12 +435,20 @@ export type Database = {
     Functions: {
       create_application: { Args: { p: Json }; Returns: string }
       get_screening_progress: { Args: never; Returns: Json }
+      set_application_status: {
+        Args: {
+          p_application_id: string
+          p_status: Database["public"]["Enums"]["application_status"]
+        }
+        Returns: undefined
+      }
       submit_rating: {
         Args: { p_application_id: string; p_comment?: string; p_scores: Json }
         Returns: undefined
       }
     }
     Enums: {
+      application_status: "not_rated" | "rated" | "rejected" | "accepted"
       staff_role: "screener" | "admin"
     }
     CompositeTypes: {
